@@ -6,8 +6,10 @@ context = zmq.Context()
 
 # The difference here is that this is a publisher and its aim in life is
 # to just publish some value. The binding is as before.
-socket = context.socket(zmq.PUB)
-socket.bind("tcp://*:5556")
+#socket = context.socket(zmq.REQ)
+#tcp://*:5555
+#tcp://10.0.0.1:5555
+#socket.connect("tcp://10.0.0.1:5555")
 
 # keep publishing
 while True:
@@ -17,8 +19,30 @@ while True:
     topic = input("Enter topic id:")
     own_strength = input("Enter ownership strength corresponding to that topic id:")
 
-    socket.send_string("%s %i %i" % (IPaddress, topic, own_strength))
     print("Sending...")
+    '''socket.send("%s %i %i" % (IPaddress, topic, own_strength))
+    print("Sent...")'''
+
+    #print("Connecting to server...")
+    socket = context.socket(zmq.REQ)
+    # socket.connect ("tcp://localhost:%s" % port)
+    port="5556"
+    socket.connect("tcp://10.0.0.4:%s" % port)
+
+    # if len(sys.argv) > 2:
+    #    socket.connect ("tcp://localhost:%s" % port1)
+
+    # You have to send a request and then wait for reply.
+
+
+    #  Do 10 requests, waiting each time for a response
+    #for request in range(1, 10):
+    #    print("Sending request ", request, "...")
+    #    socket.send("10.0.0.2")
+        #  Get the reply.
+    socket.send("%s %s %i %i" % ("pub",IPaddress, topic, own_strength))
+    message = socket.recv()
+    print("Received reply [", message, "]")
 
     sys.stdout.write("Want to enter more topics ? yes/no ")
     sys.stdout.flush()
@@ -33,7 +57,7 @@ while True:
         break
     topic = input("Enter topic id:")
     message = input("Enter message:")
-    socket.send_string("%i %i %i" % (IPaddress, topic, message))
+    socket.send_string("%i %i %i" % ("pub",IPaddress, topic, message))
 
 
 '''from EventService import add_to_ownership_stength_table

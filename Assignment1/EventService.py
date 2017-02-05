@@ -33,42 +33,26 @@ def pub_died(IPaddress):
 
 
 def refresh_pub_dict():
-    '''for ip in ownership_strength_table:
-        for topic in ip:
-            cur_own_strength = ip[topic]
-            for ip2 in ownership_strength_table:
-                if topic in ip2 :
-                    if ip2[topic] >= cur_own_strength:
-                        pub_dict[topic] = ip2'''
 
     own_lock.acquire()
 
-    if len(ownership_strength_table.keys()) != 1:
-        for ip, table in ownership_strength_table.items():
-            for topic, own_str in table.items():
-                for ip2, table2 in ownership_strength_table.items():
-                    for topic2, own_str2 in table2.items():
-                        print(topic, own_str, topic2, own_str2)
-                        if (topic2 == topic and own_str2 > own_str):
-                            pub_lock.acquire()
-                            pub_dict[topic2] = ip2
-                            pub_lock.release()
-                            break
-                        elif (topic2 == topic and own_str2 < own_str):
-                            pub_lock.acquire()
-                            pub_dict[topic2] = ip
-                            pub_lock.release()
-                            break
-    else:
-        for ip, table in ownership_strength_table.items():
-            for topic, own_str in table.items():
-                pub_lock.acquire()
-                pub_dict[topic] = ip
-                pub_lock.release()
+    for ip, table in ownership_strength_table.items():
+        for topic, own_str in table.items():
+            for ip2, table2 in ownership_strength_table.items():
+                for topic2, own_str2 in table2.items():
+                    # print(topic, own_str, topic2, own_str2)
+                    if (topic2 == topic and own_str2 > own_str):
+                        pub_lock.acquire()
+                        pub_dict[topic2] = ip2
+                        pub_lock.release()
+                        break
+                    elif (topic2 == topic and own_str2 < own_str):
+                        pub_lock.acquire()
+                        pub_dict[topic2] = ip
+                        pub_lock.release()
+                        break
 
     own_lock.release()
-
-
 
 def publish_data(topic, IPaddress):
     if pub_dict.get(topic, "nomatch") == "nomatch":
@@ -78,25 +62,34 @@ def publish_data(topic, IPaddress):
             print("Publishing data.......")
 
 
-def print_pub_table():
-    print(pub_dict)
-
-
-def print_sub_table():
-    print(sub_dict)
-
-
 # Since we are the subscriber, we use the SUB type of the socket
-socket = context.socket(zmq.SUB)
+IPInfo_from_pubandsub = context.socket(zmq.REP)
+#tcp://10.0.0.2:5555
+#tcp://*:5555
+port="5556"
+IPInfo_from_pubandsub.bind("tcp://*:%s" % port)
+
+
+#msg_to_subscribers = context.socket(zmq.XPUB)
+#msg_to_subscribers.bind("tcp://10.0.0.1:5556")
 
 # Here we assume publisher runs locally unless we
 # send a command line arg like 10.0.0.1
-srv_addr = sys.argv[1] if len(sys.argv) > 1 else "localhost"
+
+'''srv_addr = sys.argv[1] if len(sys.argv) > 1 else "localhost"
 connect_str = "tcp://" + srv_addr + ":5556"
-socket.connect(connect_str)
+socket.connect(connect_str)'''
 
 while True:
-    string = socket.recv()
     print("Receiving....");
-    IPaddress,topic, own_strength = string.split()
-    add_to_ownership_stength_table(topic, own_strength,IPaddress)
+    string = IPInfo_from_pubandsub.recv()
+    entity,IPaddress,topic, own_strength = string.split()
+    print("Received.... "+ entity,IPaddress,topic, own_strength)
+    if(entity=="pub"):
+        add_to_ownership_stength_table(topic, own_strength,IPaddress)
+        print(ownership_strength_table)
+        print(pub_dict)
+    elif(entity=="sub"):
+        register_subscriber(topic,IPaddress)
+        print(sub_dict)
+    IPInfo_from_pubandsub.send("You have been registred with us %s")
