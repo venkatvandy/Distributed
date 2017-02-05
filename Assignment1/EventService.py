@@ -5,12 +5,10 @@ import sys
 
 context = zmq.Context()
 
-pub_dict = {}
 sub_dict = {}
 ownership_strength_table = {}
 sub_lock = threading.Lock()
 own_lock = threading.Lock()
-pub_lock = threading.Lock()
 
 
 def register_subscriber(interestedTopicID, IPaddress):
@@ -21,53 +19,36 @@ def register_subscriber(interestedTopicID, IPaddress):
 
 def add_to_ownership_stength_table(topic, ownershipStrength, IPaddress):
     own_lock.acquire()
-    ownership_strength_table.setdefault(IPaddress, {})[topic] = ownershipStrength
+    ownership_strength_table.setdefault(topic, {})[ownershipStrength]=IPaddress
     own_lock.release()
-    refresh_pub_dict()
 
 def pub_died(IPaddress):
     own_lock.acquire()
-    del ownership_strength_table[IPaddress]
+    for topics, table in ownership_strength_table.items():
+        for own_str, IP in table.items():
+            if IPaddress==IP:
+                del table[own_str]
+                break
     own_lock.release()
-    refresh_pub_dict()
 
+def send_to_subsciber(IPaddress,topic):
 
-def refresh_pub_dict():
+    table ={}
+
     own_lock.acquire()
 
-    for ip, table in ownership_strength_table.items():
-        for topic, own_str in table.items():
-            pub_dict[topic]=None
+    table = ownership_strength_table[topic]
+    max_own_strength =0;
+    for own_strengths in table:
+        if(own_strengths>max_own_strength):
+            max_own_strength = own_strengths;
 
-    for ip, table in ownership_strength_table.items():
-        for topic, own_str in table.items():
-            for ip2, table2 in ownership_strength_table.items():
-                for topic2, own_str2 in table2.items():
-                    # print(topic, own_str, topic2, own_str2)
-                    if (topic2 == topic and own_str2 > own_str):
-                        pub_lock.acquire()
-                        pub_dict[topic2] = ip2
-                        pub_lock.release()
-                        #break
-
-
-    pub_lock.acquire()
-    for topic in pub_dict:
-        if(pub_dict[topic]==None):
-            for ip, table in ownership_strength_table.items():
-                for topic_o in table:
-                    if(topic_o==topic):
-                        pub_dict[topic]=ip;
-
-    pub_lock.release()
-    own_lock.release()
-
-def publish_data(topic, IPaddress):
-    if pub_dict.get(topic, "nomatch") == "nomatch":
-        print("Wrong topic id")
+    if table[max_own_strength] == IPaddress:
+        print(IPaddress+" sending message to subscriber")
     else:
-        if pub_dict.get(topic) == IPaddress:
-            print("Publishing data.......")
+        print("Publisher "+ IPaddress + " tu aukaat badha apni")
+
+    own_lock.release()
 
 
 IPInfo_from_pubandsub = context.socket(zmq.REP)
@@ -82,7 +63,6 @@ while True:
     if(entity=="pub"):
         add_to_ownership_stength_table(topic, own_strength,IPaddress)
         print(ownership_strength_table)
-        print(pub_dict)
     elif(entity=="sub"):
         register_subscriber(topic,IPaddress)
         print(sub_dict)

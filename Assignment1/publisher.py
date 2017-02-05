@@ -4,10 +4,12 @@ import zmq
 
 context = zmq.Context()
 
+IPaddress = sys.argv[1]
+
 while True:
-    sys.stdout.write("Enter IP address: ")
-    sys.stdout.flush()
-    IPaddress = sys.stdin.readline()
+    #sys.stdout.write("Enter IP address: ")
+    #sys.stdout.flush()
+    #IPaddress = sys.stdin.readline()
     topic = input("Enter topic id:")
     own_strength = input("Enter ownership strength corresponding to that topic id:")
 
