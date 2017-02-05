@@ -33,8 +33,11 @@ def pub_died(IPaddress):
 
 
 def refresh_pub_dict():
-
     own_lock.acquire()
+
+    for ip, table in ownership_strength_table.items():
+        for topic, own_str in table.items():
+            pub_dict[topic]=None
 
     for ip, table in ownership_strength_table.items():
         for topic, own_str in table.items():
@@ -45,13 +48,18 @@ def refresh_pub_dict():
                         pub_lock.acquire()
                         pub_dict[topic2] = ip2
                         pub_lock.release()
-                        break
-                    elif (topic2 == topic and own_str2 < own_str):
-                        pub_lock.acquire()
-                        pub_dict[topic2] = ip
-                        pub_lock.release()
-                        break
+                        #break
 
+
+    pub_lock.acquire()
+    for topic in pub_dict:
+        if(pub_dict[topic]==None):
+            for ip, table in ownership_strength_table.items():
+                for topic_o in table:
+                    if(topic_o==topic):
+                        pub_dict[topic]=ip;
+
+    pub_lock.release()
     own_lock.release()
 
 def publish_data(topic, IPaddress):
@@ -62,23 +70,9 @@ def publish_data(topic, IPaddress):
             print("Publishing data.......")
 
 
-# Since we are the subscriber, we use the SUB type of the socket
 IPInfo_from_pubandsub = context.socket(zmq.REP)
-#tcp://10.0.0.2:5555
-#tcp://*:5555
 port="5556"
 IPInfo_from_pubandsub.bind("tcp://*:%s" % port)
-
-
-#msg_to_subscribers = context.socket(zmq.XPUB)
-#msg_to_subscribers.bind("tcp://10.0.0.1:5556")
-
-# Here we assume publisher runs locally unless we
-# send a command line arg like 10.0.0.1
-
-'''srv_addr = sys.argv[1] if len(sys.argv) > 1 else "localhost"
-connect_str = "tcp://" + srv_addr + ":5556"
-socket.connect(connect_str)'''
 
 while True:
     print("Receiving....");
@@ -92,4 +86,4 @@ while True:
     elif(entity=="sub"):
         register_subscriber(topic,IPaddress)
         print(sub_dict)
-    IPInfo_from_pubandsub.send("You have been registred with us %s")
+    IPInfo_from_pubandsub.send("You have been registred with us")
