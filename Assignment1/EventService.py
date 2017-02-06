@@ -31,7 +31,7 @@ def pub_died(IPaddress):
                 break
     own_lock.release()
 
-def send_to_subsciber(IPaddress,topic):
+def send_to_subsciber(IPaddress,topic,message):
 
     table ={}
 
@@ -44,7 +44,12 @@ def send_to_subsciber(IPaddress,topic):
             max_own_strength = own_strengths;
 
     if table[max_own_strength] == IPaddress:
-        print(IPaddress+" sending message to subscriber")
+        print(IPaddress+" is sending message to subscriber")
+        pub_socket = context.socket(zmq.PUB)
+        pub_socket.bind("tcp://*:5557")
+        for subscribers in sub_dict[topic]:
+            pub_socket.send(subscribers,"Kohli hits " + message + " th ODI century.");
+
     else:
         print("Publisher "+ IPaddress + " tu aukaat badha apni")
 
@@ -66,4 +71,7 @@ while True:
     elif(entity=="sub"):
         register_subscriber(topic,IPaddress)
         print(sub_dict)
+    elif (entity == "message"):
+        message=own_strength
+        send_to_subsciber(IPaddress,topic,message)
     IPInfo_from_pubandsub.send("You have been registred with us")
