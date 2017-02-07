@@ -82,6 +82,8 @@ while True:
     if(entity=="pub"):
         add_to_ownership_stength_table(topic, own_strength,IPaddress)
         print(ownership_strength_table)
+    elif (entity == "QoS"):
+        QosTable[topic]
     elif(entity=="sub"):
         register_subscriber(topic,IPaddress)
         print(sub_dict)

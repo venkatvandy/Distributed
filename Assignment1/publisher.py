@@ -4,17 +4,21 @@ import zmq
 
 context = zmq.Context()
 IPaddress = sys.argv[1]
+QoS = sys.argv[2]
 count=1;
+
 
 socket = context.socket(zmq.REQ)
 port = "5556"
+socket.connect("tcp://10.0.0.1:%s" % port)
+socket.send("%s %s %i %i" % ("QoS",IPaddress, QoS, "blah"))
 
 while True:
     #sys.stdout.write("Enter IP address: ")
     #sys.stdout.flush()
     #IPaddress = sys.stdin.readline()
 
-    socket.connect("tcp://10.0.0.1:%s" % port)
+
     #break
 
     topic = input("Enter topic id:")
