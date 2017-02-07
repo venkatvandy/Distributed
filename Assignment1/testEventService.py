@@ -48,6 +48,12 @@ def send_to_subsciber(IPaddress,topic):
 
     if table[max_own_strength] == IPaddress:
         print(IPaddress+" sending message to subscriber")
+        #print(sub_dict[topic])
+        #subscribers_list = sub_dict[topic]
+        #for subscribers in subscribers_list:
+        #    print("Subcriber:",subscribers)
+        for subscribers in sub_dict[topic]:
+            print("Subcriber:", subscribers)
     else:
         print("Publisher "+ IPaddress + " tu aukaat badha")
 
@@ -121,9 +127,11 @@ add_to_ownership_stength_table(2,6,"10.0.0.2")
 add_to_ownership_stength_table(1,10,"10.0.0.3")
 add_to_ownership_stength_table(2,3,"10.0.0.3")
 
+register_subscriber(1,"10.0.0.4")
+register_subscriber(2,"10.0.0.5")
+
 print(ownership_strength_table)
-#refresh_pub_dict()
-#print_pub_table()
+print(sub_dict)
 
 send_to_subsciber("10.0.0.2",1)
 send_to_subsciber("10.0.0.3",1)

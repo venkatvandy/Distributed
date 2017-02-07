@@ -10,6 +10,8 @@ ownership_strength_table = {}
 sub_lock = threading.Lock()
 own_lock = threading.Lock()
 
+pub_socket = context.socket(zmq.PUB)
+pub_socket.bind("tcp://*:5557")
 
 def register_subscriber(interestedTopicID, IPaddress):
     sub_lock.acquire()
@@ -52,11 +54,15 @@ def send_to_subsciber(IPaddress,topic,message):
 
     if table[max_own_strength] == IPaddress:
         print(IPaddress+" is sending message to subscriber")
-        pub_socket = context.socket(zmq.PUB)
-        pub_socket.bind("tcp://*:5557")
+        #IPInfo_from_pubandsub = context.socket(zmq.PUB)
+        #IPInfo_from_pubandsub.bind("tcp://*:5556")
         for subscribers in sub_dict[topic]:
             #pub_socket.send(subscribers,"Kohli hits " + message + " th ODI century.");
-            pub_socket.send_string("%s %s" % (subscribers,message));
+            print("Subcriber is:",subscribers)
+            pub_socket.send_string("%s %s" % (subscribers, message));
+            #IPInfo_from_pubandsub.send_string("%s %s" % (subscribers,message));
+            print("Sent to:", subscribers)
+
 
     else:
         print("Publisher "+ IPaddress + " tu aukaat badha apni")
