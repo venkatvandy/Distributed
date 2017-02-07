@@ -56,7 +56,7 @@ def send_to_subsciber(IPaddress,topic,message):
         pub_socket.bind("tcp://*:5557")
         for subscribers in sub_dict[topic]:
             #pub_socket.send(subscribers,"Kohli hits " + message + " th ODI century.");
-            pub_socket.send_string("%s %s" % (subscribers,"Kohli hits 50th ODI century."));
+            pub_socket.send_string("%s %s" % (subscribers,message));
 
     else:
         print("Publisher "+ IPaddress + " tu aukaat badha apni")

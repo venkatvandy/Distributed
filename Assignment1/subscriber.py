@@ -38,11 +38,23 @@ for i in range(0,n):
 sub_socket = context.socket(zmq.SUB)
 event_serviceIP = "tcp://10.0.0.1:5557"
 sub_socket.connect(event_serviceIP)
+
+IPfilter = myIPaddress
+
+# Python 2 - ascii bytes to unicode str
+if isinstance(IPfilter, bytes):
+    IPfilter = IPfilter.decode('ascii')
+
+# any subscriber must use the SUBSCRIBE to set a subscription, i.e., tell the
+# system what it is interested in
+sub_socket.setsockopt_string(zmq.SUBSCRIBE, IPfilter)
+
+
 while True:
     print("Waiting for notifications from publishers.....")
     string = sub_socket.recv_string()
     print("***Received***:",string)
     incomingIP,message = string.split()
     print("***Received***:", incomingIP,message)
-    if incomingIP==myIPaddress:
-        print(message)
+    #if incomingIP==myIPaddress:
+    print("Kohli hits century number:",message)

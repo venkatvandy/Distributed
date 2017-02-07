@@ -15,7 +15,7 @@ while True:
     #IPaddress = sys.stdin.readline()
 
     socket.connect("tcp://10.0.0.1:%s" % port)
-    break
+    #break
 
     topic = input("Enter topic id:")
     own_strength = input("Enter ownership strength corresponding to that topic id:")
@@ -26,7 +26,7 @@ while True:
     socket.send("%s %s %i %i" % ("pub",IPaddress, topic, own_strength))
 
     message = socket.recv()
-    print("Received reply [", message, "]")
+    print("Received reply:", message)
 
     #sys.stdout.write("Want to enter more topics ? yes/no ")
     #sys.stdout.flush()
