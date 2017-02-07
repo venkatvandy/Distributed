@@ -33,11 +33,16 @@ for i in range(0,n):
     message = socket.recv()
     print(message)
 
+
+
 sub_socket = context.socket(zmq.SUB)
 event_serviceIP = "tcp://10.0.0.1:5557"
 sub_socket.connect(event_serviceIP)
 while True:
+    print("Waiting for notifications from publishers.....")
     string = sub_socket.recv_string()
+    print("***Received***:",string)
     incomingIP,message = string.split()
+    print("***Received***:", incomingIP,message)
     if incomingIP==myIPaddress:
         print(message)

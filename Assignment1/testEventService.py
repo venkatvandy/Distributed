@@ -34,10 +34,17 @@ def pub_died(IPaddress):
 def send_to_subsciber(IPaddress,topic):
     table ={}
     table = ownership_strength_table[topic]
-    max_own_strength =0;
+    print("Table is:",table)
+
+    '''max_own_strength =0;
     for own_strengths in table:
         if(own_strengths>max_own_strength):
-            max_own_strength = own_strengths;
+            max_own_strength = own_strengths;'''
+
+    max_own_strength = max(table.keys(), key=int)
+    print("Max ownership strength is:",max_own_strength)
+    print("Publisher IP address who wants to send is :", IPaddress)
+    print("Publisher who can publish this topic is :", table[max_own_strength])
 
     if table[max_own_strength] == IPaddress:
         print(IPaddress+" sending message to subscriber")
@@ -93,7 +100,7 @@ def print_sub_table():
     print(sub_dict)
 
 
-add_to_ownership_stength_table(1,10,"10.0.0.1")
+'''add_to_ownership_stength_table(1,10,"10.0.0.1")
 add_to_ownership_stength_table(2,9,"10.0.0.1")
 add_to_ownership_stength_table(3,8,"10.0.0.1")
 add_to_ownership_stength_table(4,7,"10.0.0.1")
@@ -106,16 +113,22 @@ add_to_ownership_stength_table(6,12,"10.0.0.2")
 add_to_ownership_stength_table(1,14,"10.0.0.3")
 add_to_ownership_stength_table(3,10,"10.0.0.3")
 add_to_ownership_stength_table(5,9,"10.0.0.3")
-add_to_ownership_stength_table(6,3,"10.0.0.3")
+add_to_ownership_stength_table(6,3,"10.0.0.3")'''
+
+add_to_ownership_stength_table(1,5,"10.0.0.2")
+add_to_ownership_stength_table(2,6,"10.0.0.2")
+
+add_to_ownership_stength_table(1,10,"10.0.0.3")
+add_to_ownership_stength_table(2,3,"10.0.0.3")
 
 print(ownership_strength_table)
 #refresh_pub_dict()
 #print_pub_table()
 
-send_to_subsciber("10.0.0.3",1)
 send_to_subsciber("10.0.0.2",1)
+send_to_subsciber("10.0.0.3",1)
 
-pub_died("10.0.0.1")
-print(ownership_strength_table)
+#pub_died("10.0.0.1")
+#print(ownership_strength_table)
 #refresh_pub_dict()
 #print_pub_table()

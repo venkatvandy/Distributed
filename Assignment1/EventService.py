@@ -38,17 +38,25 @@ def send_to_subsciber(IPaddress,topic,message):
     own_lock.acquire()
 
     table = ownership_strength_table[topic]
-    max_own_strength =0;
+    print("Table is:",table)
+
+    '''max_own_strength =0;
     for own_strengths in table:
         if(own_strengths>max_own_strength):
-            max_own_strength = own_strengths;
+            max_own_strength = own_strengths;'''
+
+    max_own_strength = max(table.keys(), key=int)
+    print("Max ownership strength is:",max_own_strength)
+    print("Publisher IP address who wants to send is :",IPaddress)
+    print("Publisher who can publish this topic is :", table[max_own_strength])
 
     if table[max_own_strength] == IPaddress:
         print(IPaddress+" is sending message to subscriber")
         pub_socket = context.socket(zmq.PUB)
         pub_socket.bind("tcp://*:5557")
         for subscribers in sub_dict[topic]:
-            pub_socket.send(subscribers,"Kohli hits " + message + " th ODI century.");
+            #pub_socket.send(subscribers,"Kohli hits " + message + " th ODI century.");
+            pub_socket.send_string("%s %s" % (subscribers,"Kohli hits 50th ODI century."));
 
     else:
         print("Publisher "+ IPaddress + " tu aukaat badha apni")
