@@ -62,7 +62,7 @@ def store_msg_history(IPaddress,topic,message):
     temp_table[topic] = temp_list
     msg_sliding_window[IPaddress] = temp_table
 
-    print(msg_sliding_window)
+    #print(msg_sliding_window)
     #print(que)
     sliding_window_lock.release()
 
@@ -70,7 +70,6 @@ def register_subscriber(interestedTopicID, IPaddress):
     sub_lock.acquire()
     sub_dict.setdefault(interestedTopicID, []).append(IPaddress)
     sub_lock.release()
-
 
 def add_to_ownership_stength_table(topic, ownershipStrength, IPaddress):
     own_lock.acquire()
@@ -92,6 +91,16 @@ def pub_died(IPaddress):
                 break
     own_lock.release()
 
+    his_lock.acquire()
+    if IPaddress in history_table.keys():
+        del(history_table[IPaddress])
+    his_lock.release()
+
+    sliding_window_lock.acquire()
+    if IPaddress in msg_sliding_window.keys():
+        del(msg_sliding_window[IPaddress])
+    sliding_window_lock.release()
+
 def send_to_subsciber(IPaddress,topic):
 
     table ={}
@@ -99,37 +108,36 @@ def send_to_subsciber(IPaddress,topic):
     own_lock.acquire()
 
     table = ownership_strength_table[topic]
-    print("Table is:",table)
-
-    '''max_own_strength =0;
-    for own_strengths in table:
-        if(own_strengths>max_own_strength):
-            max_own_strength = own_strengths;'''
+    #print("Table is:",table)
 
     max_own_strength = max(table.keys(), key=int)
-    print("Max ownership strength is:",max_own_strength)
-    print("Publisher IP address who wants to send is :",IPaddress)
-    print("Publisher who can publish this topic is :", table[max_own_strength])
+    #print("Max ownership strength is:",max_own_strength)
+    #print("Publisher IP address who wants to send is :",IPaddress)
+    #print("Publisher who can publish this topic is :", table[max_own_strength])
 
     if table[max_own_strength] == IPaddress:
-        print(IPaddress+" is sending message to subscriber")
-        for subscribers in sub_dict[topic]:
-            print("Subcriber is:",subscribers)
-            table = {}
-            temp_list=[]
-            table = msg_sliding_window[IPaddress]
-            temp_list = table[topic]
-            print("Length is:",len(temp_list))
-            #for messages in msg_sliding_window[IPaddress][topic]:
-            for messages in temp_list:
-                print("**Century number is:",messages)
-                pub_socket.send_string("%s %s" % (subscribers, messages));
-            #IPInfo_from_pubandsub.send_string("%s %s" % (subscribers,message));
-            print("Sent to:", subscribers)
+        if topic in sub_dict.keys():
+            for subscribers in sub_dict[topic]:
+                #print("Subcriber is:",subscribers)
+                table = {}
+                temp_list=[]
+                table = msg_sliding_window[IPaddress]
+                temp_list = table[topic]
+                #print("Length is:",len(temp_list))
+                #for messages in msg_sliding_window[IPaddress][topic]:
+                for messages in temp_list:
+                    #print("**Century number is:",messages)
+                    pub_socket.send_string("%s %s" % (subscribers, messages));
+                    #IPInfo_from_pubandsub.send_string("%s %s" % (subscribers,message));
+                    #print("Sent to:", subscribers)
+            IPInfo_from_pubandsub.send("Your message has been sent")
 
+        else:
+            print("No subscibers for topic:",topic," yet.")
 
     else:
-        print("Publisher "+ IPaddress + " tu aukaat badha apni")
+        IPInfo_from_pubandsub.send("We could not send your message as someone with higher ownership strength exists for this topic")
+        print("Cannot let Publisher "+ IPaddress + " publish")
 
     own_lock.release()
 
@@ -142,19 +150,23 @@ while True:
     print("Receiving....");
     string = IPInfo_from_pubandsub.recv()
     entity,IPaddress,topic, own_strength,history = string.split()
-    print("Received.... "+ entity,IPaddress,topic, own_strength)
+    #print("Received.... "+ entity,IPaddress,topic, own_strength)
     if(entity=="pub"):
         add_to_ownership_stength_table(topic, own_strength,IPaddress)
         add_to_history_table(topic,history,IPaddress)
-        print(ownership_strength_table)
-        print(history_table)
+        #print(ownership_strength_table)
+        #print(history_table)
         IPInfo_from_pubandsub.send("You have been registred with us")
     elif(entity=="sub"):
         register_subscriber(topic,IPaddress)
-        print(sub_dict)
+        #print(sub_dict)
         IPInfo_from_pubandsub.send("You have been registred with us")
     elif (entity == "message"):
         message=own_strength
         store_msg_history(IPaddress,topic,message)
         send_to_subsciber(IPaddress,topic)
-        IPInfo_from_pubandsub.send("Your message has been sent")
+    elif (entity == "died"):
+        entity = topic
+        if(entity=="pub"):
+            pub_died(IPaddress)
+            IPInfo_from_pubandsub.send("Fuck off...")

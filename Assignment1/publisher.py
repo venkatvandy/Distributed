@@ -39,13 +39,28 @@ while True:
         break
 
 while True:
-    choice = raw_input("Do you want to publish ? y/n:")
+    choice = raw_input("To Publish -> Press 1\n To add more topics -> Press 2\nPress n to exit")
     if (choice == 'n'):
+        socket.send("%s %s %s %i %i" % ("died", IPaddress, "pub", own_strength, history))
+        message = socket.recv()
+        print("Received reply:", message)
         break
-    count=count+1;
-    topic = input("Enter topic id:")
-    #message = input("Enter message:")
-    #message = "Kohli hits "+ count +" th ODI century"
-    socket.send("%s %s %i %i %i" % ("message", IPaddress, topic,count,0))
-    message = socket.recv()
-    print("Received reply:", message)
+    elif choice=='1':
+        count=count+1;
+        topic = input("Enter topic id:")
+        #message = input("Enter message:")
+        #message = "Kohli hits "+ count +" th ODI century"
+        socket.send("%s %s %i %i %i" % ("message", IPaddress, topic,count,0))
+        message = socket.recv()
+        print("Received reply:", message)
+    elif choice == '2':
+        topic = input("Enter topic id:")
+        own_strength = input("Enter ownership strength corresponding to that topic id:")
+        history = input("Enter history for that topic id:")
+
+        print("Sending...")
+        # socket.connect("tcp://10.0.0.1:%s" % port)
+        socket.send("%s %s %i %i %i" % ("pub", IPaddress, topic, own_strength, history))
+
+        message = socket.recv()
+        print("Received reply:", message)

@@ -53,10 +53,10 @@ if isinstance(IPfilter, bytes):
 socket.setsockopt_string(zmq.SUBSCRIBE, IPfilter)
 
 while True:
-    print("Waiting for notifications from publishers.....")
+    #print("Waiting for notifications from publishers.....")
     string = socket.recv_string()
     #print("***Received***:",string)
     incomingIP,message = string.split()
     #print("***Received***:",incomingIP,message)
     #if incomingIP==myIPaddress:
-    print("Kohli hits century number:",message)
+    print("Kohli hits century number:",message.encode('ascii', 'ignore'))
