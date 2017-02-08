@@ -101,7 +101,6 @@ def publish_data(topic, IPaddress):
 def print_pub_table():
     print(pub_dict)
 
-
 def print_sub_table():
     print(sub_dict)
 

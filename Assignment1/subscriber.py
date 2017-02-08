@@ -29,7 +29,7 @@ n = input("Enter number of topics you want to subscribe to:");
 
 for i in range(0,n):
     topic = input("Enter topic id:")
-    socket.send("%s %s %i %i" % ("sub",myIPaddress, topic, -1))
+    socket.send("%s %s %i %i %s" % ("sub",myIPaddress, topic, -1,"blah"))
     message = socket.recv()
     print(message)
 
@@ -54,8 +54,8 @@ socket.setsockopt_string(zmq.SUBSCRIBE, IPfilter)
 while True:
     print("Waiting for notifications from publishers.....")
     string = socket.recv_string()
-    print("***Received***:",string)
+    #print("***Received***:",string)
     incomingIP,message = string.split()
-    print("***Received***:",incomingIP,message)
+    #print("***Received***:",incomingIP,message)
     #if incomingIP==myIPaddress:
     print("Kohli hits century number:",message)

@@ -2,16 +2,71 @@ import collections
 import threading
 import zmq
 import sys
+import copy
+from collections import deque
 
 context = zmq.Context()
 
 sub_dict = {}
+QoSTable = {}
 ownership_strength_table = {}
+history_table = {}
 sub_lock = threading.Lock()
 own_lock = threading.Lock()
+his_lock = threading.Lock()
+sliding_window_lock = threading.Lock()
+
+msg_sliding_window = {}
+que= deque()
+temp_list=[]
 
 pub_socket = context.socket(zmq.PUB)
 pub_socket.bind("tcp://*:5557")
+
+
+def store_msg_history(IPaddress,topic,message):
+    global temp_table, que,msg_sliding_window
+
+    sliding_window_lock.acquire()
+    #msg_sliding_window.setdefault(key, []).append(val)
+
+    if IPaddress in msg_sliding_window.keys():
+        required_table = msg_sliding_window[IPaddress]
+        #print("Req table is:",required_table)
+        if topic in required_table.keys():
+            que.clear()
+            for elements in required_table[topic]:
+                #print(elements)
+                que.append(elements)
+            #que=required_table[topic]
+            #print("Queueeueue:",que)
+            del (msg_sliding_window[IPaddress][topic])
+    else:
+        que.clear()
+    #print("Queue before append:",que)
+    que.appendleft(message)
+    #print("Queue after append:", que)
+    if len(que) == int(history_table[IPaddress][topic]) +1 :
+        que.pop()
+
+    if IPaddress in msg_sliding_window.keys():
+        temp_table= msg_sliding_window[IPaddress]
+
+    #temp_table={}
+    #temp_list.clear()
+    temp_list[:] = []
+
+    for ele in que:
+        temp_list.append()
+
+    temp_table = {}
+    temp_table[topic] = temp_list
+    msg_sliding_window[IPaddress] = temp_table
+
+
+    print(msg_sliding_window)
+    #print(que)
+    sliding_window_lock.release()
 
 def register_subscriber(interestedTopicID, IPaddress):
     sub_lock.acquire()
@@ -24,6 +79,12 @@ def add_to_ownership_stength_table(topic, ownershipStrength, IPaddress):
     ownership_strength_table.setdefault(topic, {})[ownershipStrength]=IPaddress
     own_lock.release()
 
+def add_to_history_table(topic, history, IPaddress):
+    his_lock.acquire()
+    history_table.setdefault(IPaddress, {})[topic]=history
+    his_lock.release()
+
+
 def pub_died(IPaddress):
     own_lock.acquire()
     for topics, table in ownership_strength_table.items():
@@ -33,7 +94,7 @@ def pub_died(IPaddress):
                 break
     own_lock.release()
 
-def send_to_subsciber(IPaddress,topic,message):
+def send_to_subsciber(IPaddress,topic):
 
     table ={}
 
@@ -59,7 +120,8 @@ def send_to_subsciber(IPaddress,topic,message):
         for subscribers in sub_dict[topic]:
             #pub_socket.send(subscribers,"Kohli hits " + message + " th ODI century.");
             print("Subcriber is:",subscribers)
-            pub_socket.send_string("%s %s" % (subscribers, message));
+            for messages in msg_sliding_window[IPaddress][topic]:
+                pub_socket.send_string("%s %s" % (subscribers, messages));
             #IPInfo_from_pubandsub.send_string("%s %s" % (subscribers,message));
             print("Sent to:", subscribers)
 
@@ -77,17 +139,20 @@ IPInfo_from_pubandsub.bind("tcp://*:%s" % port)
 while True:
     print("Receiving....");
     string = IPInfo_from_pubandsub.recv()
-    entity,IPaddress,topic, own_strength = string.split()
+    entity,IPaddress,topic, own_strength,history = string.split()
     print("Received.... "+ entity,IPaddress,topic, own_strength)
     if(entity=="pub"):
         add_to_ownership_stength_table(topic, own_strength,IPaddress)
+        add_to_history_table(topic,history,IPaddress)
         print(ownership_strength_table)
-    elif (entity == "QoS"):
-        QosTable[topic]
+        print(history_table)
+        IPInfo_from_pubandsub.send("You have been registred with us")
     elif(entity=="sub"):
         register_subscriber(topic,IPaddress)
         print(sub_dict)
+        IPInfo_from_pubandsub.send("You have been registred with us")
     elif (entity == "message"):
         message=own_strength
-        send_to_subsciber(IPaddress,topic,message)
-    IPInfo_from_pubandsub.send("You have been registred with us")
+        store_msg_history(IPaddress,topic,message)
+        send_to_subsciber(IPaddress,topic)
+        IPInfo_from_pubandsub.send("Your message has been sent")
