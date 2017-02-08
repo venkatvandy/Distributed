@@ -17,15 +17,13 @@ his_lock = threading.Lock()
 sliding_window_lock = threading.Lock()
 
 msg_sliding_window = {}
-que= deque()
-temp_list=[]
 
 pub_socket = context.socket(zmq.PUB)
 pub_socket.bind("tcp://*:5557")
 
 
 def store_msg_history(IPaddress,topic,message):
-    global temp_table, que,msg_sliding_window
+    que = deque()
 
     sliding_window_lock.acquire()
     #msg_sliding_window.setdefault(key, []).append(val)
@@ -43,26 +41,26 @@ def store_msg_history(IPaddress,topic,message):
             del (msg_sliding_window[IPaddress][topic])
     else:
         que.clear()
+
     #print("Queue before append:",que)
     que.appendleft(message)
     #print("Queue after append:", que)
     if len(que) == int(history_table[IPaddress][topic]) +1 :
         que.pop()
 
+    temp_table = {}
+
     if IPaddress in msg_sliding_window.keys():
         temp_table= msg_sliding_window[IPaddress]
 
-    #temp_table={}
-    #temp_list.clear()
+    temp_list=[]
     temp_list[:] = []
 
     for ele in que:
-        temp_list.append()
+        temp_list.append(ele)
 
-    temp_table = {}
     temp_table[topic] = temp_list
     msg_sliding_window[IPaddress] = temp_table
-
 
     print(msg_sliding_window)
     #print(que)
@@ -115,12 +113,16 @@ def send_to_subsciber(IPaddress,topic):
 
     if table[max_own_strength] == IPaddress:
         print(IPaddress+" is sending message to subscriber")
-        #IPInfo_from_pubandsub = context.socket(zmq.PUB)
-        #IPInfo_from_pubandsub.bind("tcp://*:5556")
         for subscribers in sub_dict[topic]:
-            #pub_socket.send(subscribers,"Kohli hits " + message + " th ODI century.");
             print("Subcriber is:",subscribers)
-            for messages in msg_sliding_window[IPaddress][topic]:
+            table = {}
+            temp_list=[]
+            table = msg_sliding_window[IPaddress]
+            temp_list = table[topic]
+            print("Length is:",len(temp_list))
+            #for messages in msg_sliding_window[IPaddress][topic]:
+            for messages in temp_list:
+                print("**Century number is:",messages)
                 pub_socket.send_string("%s %s" % (subscribers, messages));
             #IPInfo_from_pubandsub.send_string("%s %s" % (subscribers,message));
             print("Sent to:", subscribers)

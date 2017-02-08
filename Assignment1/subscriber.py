@@ -1,6 +1,7 @@
 import sys
 import socket
 import zmq
+import os
 
 myIPaddress = sys.argv[1]
 context = zmq.Context()
