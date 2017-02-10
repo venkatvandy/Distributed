@@ -62,7 +62,7 @@ def store_msg_history(IPaddress,topic,message):
     temp_table[topic] = temp_list
     msg_sliding_window[IPaddress] = temp_table
 
-    #print(msg_sliding_window)
+    print(msg_sliding_window)
     #print(que)
     sliding_window_lock.release()
 
@@ -123,7 +123,7 @@ def send_to_subsciber(IPaddress,topic):
                 temp_list=[]
                 table = msg_sliding_window[IPaddress]
                 temp_list = table[topic]
-                #print("Length is:",len(temp_list))
+                print("Length is:",len(temp_list))
                 #for messages in msg_sliding_window[IPaddress][topic]:
                 for messages in temp_list:
                     #print("**Century number is:",messages)
@@ -169,4 +169,4 @@ while True:
         entity = topic
         if(entity=="pub"):
             pub_died(IPaddress)
-            IPInfo_from_pubandsub.send("Fuck off...")
+            IPInfo_from_pubandsub.send("bye bye...")

@@ -5,7 +5,7 @@ How to run
 1. Run python EventService.py on IP 10.0.0.1
 2. Run any number of publishers using command "python publisher.py <IPaddress of that publisher>"
 	It will ask for inputs which are self explanatory when you run the program
-3. Run any number of subscribers using the command  "python publisher.py <IPaddress of that subscriber>"
+3. Run any number of subscribers using the command  "python subscriber.py <IPaddress of that subscriber>"
 	It will ask for inputs which are self explanatory when you run the program
 
 The screenshots of the results of the executions are present in my github link

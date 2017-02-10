@@ -39,7 +39,7 @@ while True:
         break
 
 while True:
-    choice = raw_input("To Publish -> Press 1\n To add more topics -> Press 2\nPress n to exit")
+    choice = raw_input("To Publish -> Press 1\n To add more topics -> Press 2\nPress n to exit\n")
     if (choice == 'n'):
         socket.send("%s %s %s %i %i" % ("died", IPaddress, "pub", own_strength, history))
         message = socket.recv()
