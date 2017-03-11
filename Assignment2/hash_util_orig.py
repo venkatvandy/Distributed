@@ -17,36 +17,25 @@ MAX_INDEX = (0x01 << 160) - 1
 
 #returns true if h1>h2
 def hash_greater_than(h1, h2):
-    if(int(h1.key) > int(h2.key)):
+    if int(h1.key, 16) > int(h2.key, 16):
         return True
     return False
-#    if int(h1.key, 16) > int(h2.key, 16):
-#        return True
-#    return False
 
 #returns true if h1<h2
 def hash_less_than(h1, h2):
-    if(int(h1.key) < int(h2.key)):
+    if int(h1.key, 16) < int(h2.key, 16):
         return True
     return False
-
-#    if int(h1.key, 16) < int(h2.key, 16):
-#        return True
-#    return False
 
 #returns true if h1==h2
 def hash_equal(h1, h2):
-    if(int(h1.key) == int(h2.key)):
+    if int(h1.key, 16) == int(h2.key, 16):
         return True
     return False
 
-#    if int(h1.key, 16) == int(h2.key, 16):
-#        return True
-#    return False
-
 #returns True if h1 is between s1 and s2
 def hash_between(h1, s1, s2):
-
+    
     #if s1 == s2 then h1 must be between them assuming a full loop
     if(hash_equal(s1, s2)):
         return True
@@ -64,48 +53,32 @@ def hash_between(h1, s1, s2):
         #normal s1 < h1 < s2
         if hash_greater_than(h1, s1) and hash_less_than(h1, s2):
             return True
-
+        
     return False
 
 def add_keys(k1, k2):
-    #print('FROM HASH-------------')
-    #print(k1.key)
-    #print(k2.key)
-    x = (int(k1.key) + int(k2.key))  % 160#MAX_INDEX
-    return Key(str(x))
-
-#    x = (int(k1.key, 16) + int(k2.key, 16)) % MAX_INDEX
-#    return Key(hex(x).replace("L", ""))
+    x = (int(k1.key, 16) + int(k2.key, 16)) % MAX_INDEX
+    return Key(hex(x).replace("L", ""))
 
 
 def subtract_keys(k1, k2):
-    x = (int(k1.key) - int(k2.key))
+    x = (int(k1.key, 16) - int(k2.key, 16))
     if x < 0:
-        x = 160 + x #MAX_INDEX
-    return Key(str(x))
+        x = MAX_INDEX + x
+    return Key(hex(x).replace("L", ""))
 
-#    x = (int(k1.key, 16) - int(k2.key, 16))
-#    if x < 0:
-#        x = MAX_INDEX + x
-#    return Key(hex(x).replace("L", ""))
-
-
+    
 def hash_str(strToHash):
-    return Key((strToHash))
-
-    #m = hashlib.sha1()
-    #m.update(strToHash)
-    #return Key("0x" + m.hexdigest())
+    m = hashlib.sha1()
+    m.update(strToHash)
+    return Key("0x" + m.hexdigest())
 
 
 def generate_key_with_index(index):
-    x = 2**(index)
-    return Key(str(x))
-    #return Key(hex(0x01 << index).replace("L", ""))
+    return Key(hex(0x01 << index).replace("L", ""))
 
 
 def generate_lookup_key_with_index(thisIndex, indexOfKey):
-
     return add_keys(thisIndex, generate_key_with_index(indexOfKey))
 
 

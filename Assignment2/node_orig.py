@@ -12,6 +12,7 @@ import copy
 from optparse import OptionParser
 import random
 import logging
+import zmq
 
 class Node():
     ID = 0
@@ -28,13 +29,11 @@ class Node():
             return True
         return False
 
+context = zmq.Context()
+
 #Node
 thisNode = Node()
-print('Noooooooooooooooooooooovenber')
-#print(str(uuid.uuid4()))
-#print(str(uuid.uuid4()) + str(uuid.uuid4()))
 #thisNode.ID = hash_str(str(uuid.uuid4()) + str(uuid.uuid4()))
-thisNode.ID = hash_str(0)
 #thisNode.IPAddr = "localhost"
 #thisNode.IPAddr = "10.0.0.1"
 thisNode.ctrlPort = 7228
@@ -55,6 +54,9 @@ successorOfflineAttempts = 0
 #Network connections
 servCtrl = None
 servRelay = None
+IPInfo_from_pubandsub = context.socket(zmq.REP)
+port = "5556"
+IPInfo_from_pubandsub.bind("tcp://*:%s" % port)
 
 
 def exit_signal_handler(signal, frame):
@@ -62,7 +64,7 @@ def exit_signal_handler(signal, frame):
     logging.info("Closing Connections.")
     graceful_exit(0)
     exit(0)
-
+    
 signal.signal(signal.SIGINT, exit_signal_handler)
 
 def graceful_exit(exitCode):
@@ -91,7 +93,7 @@ def handle_ctrl_connection(conn, addr):
     if data:
         message = unserialize_message(data)
         #print "Recieved - " + str(message.messageType)
-
+        
         if message.messageType == ControlMessageTypes.GET_NEXT_NODE:
             retCode = 0
             tmpNode = find_closest_finger(message.data)
@@ -100,18 +102,18 @@ def handle_ctrl_connection(conn, addr):
                 retCode = 1
             retMsg = CtrlMessage(MessageTypes.MSG_ACK, tmpNode, retCode)
             conn.send(serialize_message(retMsg))
-
+            
         elif message.messageType == ControlMessageTypes.GET_ROOT_NODE_REQUEST:
             print "Got root node request"
             logging.info("Got root node request")
             tmpNode = get_root_node(message.data)
             retMsg = CtrlMessage(MessageTypes.MSG_ACK, tmpNode, 0)
             conn.send(serialize_message(retMsg))
-
+            
         elif message.messageType == ControlMessageTypes.GET_PREDECESSOR:
             retMsg = CtrlMessage(MessageTypes.MSG_ACK, get_predecessor(), 0)
             conn.send(serialize_message(retMsg))
-
+            
         elif message.messageType == ControlMessageTypes.IS_PREDECESSOR:
             print "New pred set"
             logging.info("New pred set")
@@ -120,14 +122,14 @@ def handle_ctrl_connection(conn, addr):
                 set_predecessor(copy.deepcopy(message.data))
             retMsg = CtrlMessage(MessageTypes.MSG_ACK, 0, 0)
             conn.send(serialize_message(retMsg))
-
+            
         elif message.messageType == ControlMessageTypes.IS_SUCCESSOR:
             farm_successor_list_bg()
             if hash_between(message.data.ID, thisNode.ID, get_immediate_successor_node().ID):
                 set_immediate_successor(copy.deepcopy(message.data))
             retMsg = CtrlMessage(MessageTypes.MSG_ACK, 0, 0)
             conn.send(serialize_message(retMsg))
-
+            
         elif message.messageType == ControlMessageTypes.GET_NEXT_NODE_PREDECESSOR:
             retCode = 0
             tmpNode = find_closest_finger(message.data)
@@ -135,12 +137,12 @@ def handle_ctrl_connection(conn, addr):
                 retCode = 1
             retMsg = CtrlMessage(MessageTypes.MSG_ACK, tmpNode, retCode)
             conn.send(serialize_message(retMsg))
-
+            
         elif message.messageType == ControlMessageTypes.UPDATE_FINGER_TABLE:
             update_finger_table(message.data, message.extra)
             conn.send(serialize_message(CtrlMessage(MessageTypes.MSG_ACK, 0, 0)))
         elif message.messageType == MessageTypes.PING:
-            conn.send(serialize_message(CtrlMessage(MessageTypes.MSG_ACK, 0, 0)))
+            conn.send(serialize_message(CtrlMessage(MessageTypes.MSG_ACK, 0, 0)))       
         else:
             print "random msg"
 
@@ -152,7 +154,7 @@ def handle_ctrl_connection(conn, addr):
 def handle_connection(conn, addr):
     data = conn.recv(MAX_REC_SIZE)
     conn.settimeout(DEFAULT_TIMEOUT)
-    if data:
+    if data: 
         conn.send(data)
     print "Closing connection."
     logging.info("Closing connection.")
@@ -177,7 +179,7 @@ def get_next_node_predecessor(node, key):
 def get_root_node(key):
     global thisNode
     closestNode = find_closest_finger(key)
-
+    
     if closestNode == thisNode:
         #this is the closest node - return the successor
         return get_immediate_successor_node()
@@ -190,14 +192,14 @@ def get_root_node(key):
             return tmpNode
 
         closestNode = tmpNode
-
+        
     return None
 
 def get_closest_preceding_node(key):
     global thisNode
 
     closestNode = find_closest_finger(key)
-
+    
     if closestNode == thisNode:
         return thisNode
 
@@ -209,9 +211,9 @@ def get_closest_preceding_node(key):
             return tmpNode
 
         closestNode = tmpNode
-
+        
     return None
-
+    
 def update_finger_table_request(requestNode, updateNode, i):
     data = send_ctrl_message_with_ACK(updateNode, ControlMessageTypes.UPDATE_FINGER_TABLE, i, requestNode, DEFAULT_TIMEOUT * 4)
     if data is None:
@@ -226,7 +228,7 @@ def update_finger_table(node, i):
     fingerTableLock.acquire()
     fingerEntry = fingerTable[i]
     fingerTableLock.release()
-
+    
     if hash_between(node.ID, thisNode.ID, fingerEntry.ID):
         fingerTableLock.acquire()
         fingerTable[i] = copy.deepcopy(node)
@@ -245,7 +247,6 @@ def get_immediate_successor_node():
     global fingerTable
     fingerTableLock.acquire()
     ret = copy.deepcopy(fingerTable[0])
-    print('My Current Successor: ', ret.ID.key)
     fingerTableLock.release()
     return ret
 
@@ -279,12 +280,12 @@ def update_others():
         tmpNode = get_closest_preceding_node(searchKey)
         update_finger_table_request(tmpNode, thisNode, i)
     return
-
+        
 
 def join_network(existingNode):
     global fingerTable
     global thisNode
-
+    
     k = generate_lookup_key_with_index(thisNode.ID, 0)
 
     tmpNode = get_root_node_request(existingNode, k)
@@ -301,11 +302,11 @@ def join_network(existingNode):
 
     for i in range(1, KEY_SIZE):
         searchKey = generate_lookup_key_with_index(thisNode.ID, i)
-
+        
         fingerTableLock.acquire()
         prevFingerNode = copy.deepcopy(fingerTable[i-1])
         fingerTableLock.release()
-
+        
         if hash_between(searchKey, thisNode.ID, prevFingerNode.ID):
             fingerTableLock.acquire()
             fingerTable[i] = copy.deepcopy(fingerTable[i-1])
@@ -342,12 +343,11 @@ def set_finger_table_to_successor():
         fingerTable[i] = copy.deepcopy(fingerTable[0])
     fingerTableLock.release()
     return
-
+    
 
 def print_finger_table():
     global thisNode
     fingerTableLock.acquire()
-    print('Our Key size: ',KEY_SIZE)
     for i in range(0, KEY_SIZE):
         #print str(fingerTable[i].ID.key) + " " + str(fingerTable[i].IPAddr) + ":" + str(fingerTable[i].ctrlPort) + " " + str(generate_lookup_key_with_index(thisNode.ID, i).key)
         logging.info(str(fingerTable[i].ID.key) + " " + str(fingerTable[i].IPAddr) + ":" + str(fingerTable[i].ctrlPort) + " " + str(generate_lookup_key_with_index(thisNode.ID, i).key))
@@ -402,7 +402,7 @@ def update_entire_finger_table():
         fingerTableLock.acquire()
         prevFingerNode = copy.deepcopy(fingerTable[i-1])
         fingerTableLock.release()
-
+        
         if hash_between(searchKey, thisNode.ID, prevFingerNode.ID):
             fingerTableLock.acquire()
             fingerTable[i] = copy.deepcopy(fingerTable[i-1])
@@ -510,7 +510,7 @@ def stabilization_routine():
             farm_successor_list_bg()
             sucCount = 0
             successorOfflineAttempts = 0
-
+    
         suc = get_immediate_successor_node()
         pre = get_node_predecessor(suc)
         if pre is None:
@@ -521,7 +521,7 @@ def stabilization_routine():
             print "New succ set to " + suc.ID.key
             logging.info("New succ set to " + suc.ID.key)
             continue
-
+        
         if not thisNode == pre:
             if hash_between(thisNode.ID, pre.ID, suc.ID):
                 print "Updating successors predecessor"
@@ -534,15 +534,15 @@ def stabilization_routine():
                 set_immediate_successor(suc)
                 print "New succ set to " + suc.ID.key
                 logging.info("New succ set to " + suc.ID.key)
-
-
+        
+            
 def fix_fingers_stabilization_routine():
     global fingerTable
     global numFingerErrors
 
     count = 0
     numFingerErrors = 0
-
+    
     while 1:
         time.sleep(random.randint(25, 50))
         i = random.randint(1, 159)
@@ -550,7 +550,7 @@ def fix_fingers_stabilization_routine():
         logging.info("Updating finger " + str(i))
         searchKey = generate_lookup_key_with_index(thisNode.ID, i)
         retNode = get_root_node(searchKey)
-
+        
         fingerTableLock.acquire()
         tmpFinger = copy.deepcopy(fingerTable[i])
         fingerTableLock.release()
@@ -580,6 +580,32 @@ def fix_fingers_stabilization_routine():
             count = 0
         else:
             count+=1
+
+def process_publishers():
+    while True:
+        print("Receiving publishers...");
+        string = IPInfo_from_pubandsub.recv()
+        entity, IPaddress, topic, own_strength, history = string.split()
+        # print("Received.... "+ entity,IPaddress,topic, own_strength)
+        if (entity == "pub"):
+            add_to_ownership_stength_table(topic, own_strength, IPaddress)
+            add_to_history_table(topic, history, IPaddress)
+            # print(ownership_strength_table)
+            # print(history_table)
+            IPInfo_from_pubandsub.send("You have been registred with us")
+        elif (entity == "sub"):
+            register_subscriber(topic, IPaddress)
+            # print(sub_dict)
+            IPInfo_from_pubandsub.send("You have been registred with us")
+        elif (entity == "message"):
+            message = own_strength
+            store_msg_history(IPaddress, topic, message)
+            send_to_subsciber(IPaddress, topic)
+        elif (entity == "died"):
+            entity = topic
+            if (entity == "pub"):
+                pub_died(IPaddress)
+                IPInfo_from_pubandsub.send("bye bye...")
 
 def main():
     global thisNode
@@ -617,6 +643,7 @@ def main():
 
     thisNode.IPAddr = options.myIP
     thisNode.logFilename = "log_" + thisNode.IPAddr + ".log"
+    thisNode.ID = hash_str(thisNode.IPAddr)
     logging.basicConfig(filename=thisNode.logFilename, filemode='w', level=logging.DEBUG)
 
     print "Set listening port to " + str(options.controlport)
@@ -624,25 +651,6 @@ def main():
 
     print "Set my IP to " + options.myIP
     logging.info("Set my IP to " + options.myIP)
-
-    ipEnd = options.myIP.split('.')
-    print('------------------')
-    print(ipEnd[3])
-    print('------------------')
-    #print(int(ipEnd[2]).key)
-    #print(int(ipEnd[3]).key)
-    #localid = hash_str('0x09')
-    #print('localid.key five', localid.key)
-    #localid2 = hash_str('0x10')
-    #print('localid2.key one', localid2.key)
-    #if(hash_greater_than(localid,localid2)):
-    #    print('------------------')
-    #    print('five greater than one')
-    #    print('------------------')
-    thisNode.ID = hash_str(str(ipEnd[3]))
-
-
-
 
     print "This ID: " + thisNode.ID.key
     logging.info("This ID: " + thisNode.ID.key)
@@ -655,6 +663,7 @@ def main():
     listenCtrlThread = Thread(target=wait_for_ctrl_connections, args=(thisNode,handle_ctrl_connection))
     listenCtrlThread.daemon = True
     listenCtrlThread.start()
+
     print "Sleeping for 1 seconds while listening threads are created."
     logging.info("Sleeping for 1 seconds while listening threads are created.")
     time.sleep(1)
@@ -667,7 +676,7 @@ def main():
         logging.info("Joining using existing node:"+tmpNode.IPAddr+":"+str(tmpNode.ctrlPort))
         join_network(tmpNode)
 
-
+    
     print "Joined the network"
     logging.info("Joined the network")
 
@@ -684,11 +693,16 @@ def main():
     stabilizer.daemon = True
     stabilizer.start()
 
+
+    joiningPublishers = Thread(target=process_publishers)
+    joiningPublishers.daemon = True
+    joiningPublishers.start()
+
     while 1:
         listenCtrlThread.join(1)
         raw_input("Press enter to print finger table...")
         print_finger_table()
-
+        
     return 0
 
 if __name__ == "__main__":
