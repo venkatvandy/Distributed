@@ -8,6 +8,10 @@ class ControlMessageTypes():
     GET_PREDECESSOR = 4
     UPDATE_FINGER_TABLE = 5
     GET_NEXT_NODE_PREDECESSOR = 6
+    PUBLISHER_HERE = 10
+    SUBSCRIBER_HERE = 11
+    PUBLISHERHERE_STOREOWN_STRENGTH = 12
+    PUBLISH = 13
 
 class MessageTypes():
     MSG_ACK = 8

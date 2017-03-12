@@ -12,6 +12,10 @@ import copy
 from optparse import OptionParser
 import random
 import logging
+import threading
+
+own_lock = threading.Lock()
+ownership_strength_table = {}
 
 class Node():
     ID = 0
@@ -82,6 +86,21 @@ def graceful_exit(exitCode):
         logging.info("Could not close relay port.")
     exit(exitCode)
 
+def add_to_ownership_stength_table(topic, ownershipStrength, IPaddress):
+    own_lock.acquire()
+    ownership_strength_table.setdefault(topic, {})[ownershipStrength]=IPaddress
+    own_lock.release()
+
+def check_if_publisher_can_publish(IPaddress,topic):
+    table = {}
+    own_lock.acquire()
+    table = ownership_strength_table[topic]
+    max_own_strength = max(table.keys(), key=int)
+    if table[max_own_strength] == IPaddress:
+        return "yes"
+    else:
+        return "no"
+
 
 def handle_ctrl_connection(conn, addr):
     global thisNode
@@ -141,6 +160,38 @@ def handle_ctrl_connection(conn, addr):
             conn.send(serialize_message(CtrlMessage(MessageTypes.MSG_ACK, 0, 0)))
         elif message.messageType == MessageTypes.PING:
             conn.send(serialize_message(CtrlMessage(MessageTypes.MSG_ACK, 0, 0)))
+        elif message.messageType == ControlMessageTypes.PUBLISHER_HERE:
+            IPaddressOfPub = message.data.split('@')[0]
+            mytopicID = message.data.split('@')[1]
+            own_strength = message.data.split('@')[2]
+            #topic_key = generate_lookup_key_with_index(thisNode.ID,int(mytopicID))
+            topic_key = hash_str(mytopicID)
+            print("*******topic_key:", mytopicID)
+            print("*******topic_key:",topic_key.key)
+            succ_Node = get_root_node_request(thisNode,topic_key)
+            print('My succesor is:',succ_Node.IPAddr)
+            retMsg = CtrlMessage(MessageTypes.MSG_ACK, succ_Node.IPAddr, 0)
+            conn.send(serialize_message(retMsg))
+
+        elif message.messageType == ControlMessageTypes.PUBLISHERHERE_STOREOWN_STRENGTH:
+            IPaddressOfPub = message.data.split('@')[0]
+            mytopicID = message.data.split('@')[1]
+            own_strength = message.data.split('@')[2]
+
+            add_to_ownership_stength_table(mytopicID, own_strength, IPaddressOfPub)
+            print(ownership_strength_table)
+            retMsg = CtrlMessage(MessageTypes.MSG_ACK, "Done", 0)
+            conn.send(serialize_message(retMsg))
+        elif message.messageType == ControlMessageTypes.PUBLISH:
+            IPaddressOfPub = message.data.split('@')[0]
+            mytopicID = message.data.split('@')[1]
+
+            yes_or_no = check_if_publisher_can_publish(IPaddressOfPub,mytopicID)
+            retMsg = CtrlMessage(MessageTypes.MSG_ACK, yes_or_no, 0)
+            conn.send(serialize_message(retMsg))
+
+
+        #elif message.messageType == MessageTypes.SUBSCRIBER_HERE:
         else:
             print "random msg"
 
