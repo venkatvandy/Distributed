@@ -170,51 +170,34 @@ INFO:root:20 10.0.0.20:5555 8
 INFO:root:Pred: 20
 INFO:root:Farming successor list
 INFO:root:Finished farming successor list
-INFO:root:Updating finger 69
+INFO:root:Updating finger 92
 INFO:root:Finger is wrong - changing finger.
 INFO:root:Finished updating finger
-INFO:root:Updating finger 79
+INFO:root:Updating finger 135
 INFO:root:Finished updating finger
-INFO:root:Got root node request
-INFO:root:Updating finger 44
+INFO:root:Updating finger 66
 INFO:root:Finger is wrong - changing finger.
 INFO:root:Finished updating finger
-INFO:root:Updating finger 126
+INFO:root:Updating finger 125
 INFO:root:Finger is wrong - changing finger.
 INFO:root:Finished updating finger
-INFO:root:Updating finger 47
-INFO:root:Finished updating finger
-INFO:root:Updating finger 12
-INFO:root:Finger is wrong - changing finger.
-INFO:root:Finished updating finger
-INFO:root:Updating finger 141
-INFO:root:Finger is wrong - changing finger.
-INFO:root:Finished updating finger
-INFO:root:Updating finger 154
+INFO:root:Updating finger 108
 INFO:root:Finger is wrong - changing finger.
 INFO:root:Detected two finger table errors in a row - refreshing finger table.
 INFO:root:Making request for fingertable construction
 INFO:root:Finished updating finger
-INFO:root:Updating finger 17
+INFO:root:Updating finger 95
+INFO:root:Finished updating finger
+INFO:root:Updating finger 16
 INFO:root:Finger is wrong - changing finger.
 INFO:root:Finished updating finger
-INFO:root:Updating finger 51
-INFO:root:Finished updating finger
-INFO:root:Updating finger 110
+INFO:root:Updating finger 42
 INFO:root:Finger is wrong - changing finger.
 INFO:root:Finished updating finger
-INFO:root:Updating finger 12
-INFO:root:Finger is wrong - changing finger.
-INFO:root:Finished updating finger
-INFO:root:Updating finger 114
+INFO:root:Updating finger 108
 INFO:root:Finger is wrong - changing finger.
 INFO:root:Detected two finger table errors in a row - refreshing finger table.
 INFO:root:Making request for fingertable construction
 INFO:root:Finished updating finger
-INFO:root:Updating finger 153
-INFO:root:Finger is wrong - changing finger.
+INFO:root:Updating finger 55
 INFO:root:Finished updating finger
-INFO:root:Updating finger 94
-INFO:root:Finger is wrong - changing finger.
-INFO:root:Finished updating finger
-INFO:root:Got root node request

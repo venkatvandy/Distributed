@@ -14,8 +14,10 @@ import random
 import logging
 import threading
 
-own_lock = threading.Lock()
+sub_dict = {}
 ownership_strength_table = {}
+own_lock = threading.Lock()
+sub_lock = threading.Lock()
 
 class Node():
     ID = 0
@@ -88,19 +90,33 @@ def graceful_exit(exitCode):
 
 def add_to_ownership_stength_table(topic, ownershipStrength, IPaddress):
     own_lock.acquire()
+    print("***********1.1")
     ownership_strength_table.setdefault(topic, {})[ownershipStrength]=IPaddress
+    print("***********1.2")
     own_lock.release()
 
 def check_if_publisher_can_publish(IPaddress,topic):
     table = {}
     own_lock.acquire()
     table = ownership_strength_table[topic]
+    own_lock.release()
     max_own_strength = max(table.keys(), key=int)
     if table[max_own_strength] == IPaddress:
-        return "yes"
+        #return "yes"
+        if topic in sub_dict.keys():
+            for subscribers in sub_dict[topic]:
+                subscribers_list = subscribers+"@"
+
+            if(subscribers_list):
+                subscribers_list = subscribers_list[:-1]   #removing the last "@" from the string
+                return subscribers_list
     else:
         return "no"
 
+def register_subscriber(interestedTopicID, IPaddress):
+    sub_lock.acquire()
+    sub_dict.setdefault(interestedTopicID, []).append(IPaddress)
+    sub_lock.release()
 
 def handle_ctrl_connection(conn, addr):
     global thisNode
@@ -158,9 +174,11 @@ def handle_ctrl_connection(conn, addr):
         elif message.messageType == ControlMessageTypes.UPDATE_FINGER_TABLE:
             update_finger_table(message.data, message.extra)
             conn.send(serialize_message(CtrlMessage(MessageTypes.MSG_ACK, 0, 0)))
+
         elif message.messageType == MessageTypes.PING:
             conn.send(serialize_message(CtrlMessage(MessageTypes.MSG_ACK, 0, 0)))
-        elif message.messageType == ControlMessageTypes.PUBLISHER_HERE:
+
+        elif message.messageType == ControlMessageTypes.PUBLISHER_HERE_FIND_MY_SUCCESSOR:
             IPaddressOfPub = message.data.split('@')[0]
             mytopicID = message.data.split('@')[1]
             own_strength = message.data.split('@')[2]
@@ -174,20 +192,44 @@ def handle_ctrl_connection(conn, addr):
             conn.send(serialize_message(retMsg))
 
         elif message.messageType == ControlMessageTypes.PUBLISHERHERE_STOREOWN_STRENGTH:
+            print("***********1")
             IPaddressOfPub = message.data.split('@')[0]
             mytopicID = message.data.split('@')[1]
             own_strength = message.data.split('@')[2]
 
+
             add_to_ownership_stength_table(mytopicID, own_strength, IPaddressOfPub)
-            print(ownership_strength_table)
+            print("************ownership_strength_table",ownership_strength_table)
             retMsg = CtrlMessage(MessageTypes.MSG_ACK, "Done", 0)
+            print("***********2")
             conn.send(serialize_message(retMsg))
+
         elif message.messageType == ControlMessageTypes.PUBLISH:
             IPaddressOfPub = message.data.split('@')[0]
             mytopicID = message.data.split('@')[1]
 
             yes_or_no = check_if_publisher_can_publish(IPaddressOfPub,mytopicID)
             retMsg = CtrlMessage(MessageTypes.MSG_ACK, yes_or_no, 0)
+            conn.send(serialize_message(retMsg))
+        elif message.messageType == ControlMessageTypes.SUBSCRIBER_HERE_FIND_MY_SUCCESSOR:
+            IPaddressOfSub = message.data.split('@')[0]
+            interestedtTopicID = message.data.split('@')[1]
+
+            topic_key = hash_str(interestedtTopicID)
+            print("*******topic_key:", interestedtTopicID)
+            print("*******topic_key:", topic_key.key)
+            succ_Node = get_root_node_request(thisNode, topic_key)
+            print('My succesor is:', succ_Node.IPAddr)
+            retMsg = CtrlMessage(MessageTypes.MSG_ACK, succ_Node.IPAddr, 0)
+            conn.send(serialize_message(retMsg))
+
+        elif message.messageType == ControlMessageTypes.SUBSCRIBER_HERE_STORE_ME:
+            IPaddressOfSub = message.data.split('@')[0]
+            interestedtTopicID = message.data.split('@')[1]
+
+            register_subscriber(interestedtTopicID, IPaddressOfSub)
+            print("*********Subscriber dict***",sub_dict)
+            retMsg = CtrlMessage(MessageTypes.MSG_ACK, "Done", 0)
             conn.send(serialize_message(retMsg))
 
 
@@ -296,7 +338,7 @@ def get_immediate_successor_node():
     global fingerTable
     fingerTableLock.acquire()
     ret = copy.deepcopy(fingerTable[0])
-    print('My Current Successor: ', ret.ID.key)
+    #print('My Current Successor: ', ret.ID.key)
     fingerTableLock.release()
     return ret
 
@@ -495,7 +537,7 @@ def farm_successor_list():
         successorList[i] = copy.deepcopy(fingerTable[130 + i])
         fingerTableLock.release()
         sucListLock.release()
-    print "Finished farming successor list"
+    #print "Finished farming successor list"
     logging.info("Finished farming successor list")
     return
 
@@ -597,7 +639,7 @@ def fix_fingers_stabilization_routine():
     while 1:
         time.sleep(random.randint(25, 50))
         i = random.randint(1, 159)
-        print "Updating finger " + str(i)
+        #print "Updating finger " + str(i)
         logging.info("Updating finger " + str(i))
         searchKey = generate_lookup_key_with_index(thisNode.ID, i)
         retNode = get_root_node(searchKey)
@@ -621,7 +663,7 @@ def fix_fingers_stabilization_routine():
         else:
             numFingerErrors = 0
 
-        print "Finished updating finger"
+        #print "Finished updating finger"
         logging.info("Finished updating finger")
 
         if count > 60:

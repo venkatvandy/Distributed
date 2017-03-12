@@ -1,12 +1,67 @@
-import socket
 import sys
 import zmq
 from socket import *
 from optparse import OptionParser
 from network_ctrl import *
 from node import Node
+from collections import deque
+
 
 count=0
+msg_sliding_window = {}
+
+#pub_socket = context.socket(zmq.PUB)
+#pub_socket.bind("tcp://*:5555")
+
+#conn_a = socket(AF_INET, SOCK_STREAM)
+#conn_2 = socket(AF_INET, SOCK_STREAM)
+#conn_3 = socket(AF_INET, SOCK_STREAM)
+#conn_4 = socket(AF_INET, SOCK_STREAM)
+
+def store_msg_history(topic,message,history):
+    que = deque()
+
+    if topic in msg_sliding_window.keys():
+        que.clear()
+        for elements in msg_sliding_window[topic]:
+            # print(elements)
+            que.append(elements)
+            # que=required_table[topic]
+            # print("Queueeueue:",que)
+        del (msg_sliding_window[topic])
+
+    que.appendleft(message)
+    if len(que) == int(history) +1 :
+        que.pop()
+
+    temp_list = []
+    temp_list[:] = []
+
+    for ele in que:
+        temp_list.append(ele)
+
+    msg_sliding_window[topic] = temp_list
+
+    print(msg_sliding_window)
+
+def send_message_to_sub(sub,msg_sliding_window,topic):
+    temp_list = msg_sliding_window[topic]
+    print("Length of sliding window is:", len(temp_list))
+    # for messages in msg_sliding_window[IPaddress][topic]:
+    for messages in temp_list:
+        # print("**Century number is:",messages)
+        context = zmq.Context()
+        pub_socket = context.socket(zmq.REQ)
+        port = "5555"
+        sub_ip = "tcp://"+str(sub)+":5555"
+        pub_socket.connect(sub_ip)
+
+        pub_socket.send_string("%s" % (str(messages)));
+        print(pub_socket.recv())
+
+        # IPInfo_from_pubandsub.send_string("%s %s" % (subscribers,message));
+        # print("Sent to:", subscribers)
+
 
 ######################### Main #########################
 def main():
@@ -45,9 +100,10 @@ def main():
     #port = "5556"
     #socket.connect(eventServiceNodeIP % port)
 
-    conn = socket(AF_INET, SOCK_STREAM)
     #conn.settimeout(timeout)
+
     nodeAddr = (eventServiceNodeIP,5555)
+    print("***********nodeAddr", nodeAddr)
 
     topic = input("Enter topic id:")
     own_strength = input("Enter ownership strength corresponding to that topic id:")
@@ -57,23 +113,40 @@ def main():
     print("Sending to ...", eventServiceNodeIP)
         # socket.connect("tcp://10.0.0.1:%s" % port)
         #socket.send("%s %s %i %i %i" % ("pub", myIPaddress, topic, own_strength, history))
-    conn.connect(nodeAddr)
-    conn.send(serialize_message(CtrlMessage(ControlMessageTypes.PUBLISHER_HERE, message, 0)))
-    data = conn.recv(MAX_REC_SIZE)
-    conn.close()
-    data=unserialize_message(data)
-    print("*************My eventservice will be:", data.data)
 
-    esIP = data.data
-    eSnodeIPAddr = (esIP, 5555)
-    conna = socket(AF_INET, SOCK_STREAM)
-    conna.connect(eSnodeIPAddr)
-    conna.send(serialize_message(CtrlMessage(ControlMessageTypes.PUBLISHERHERE_STOREOWN_STRENGTH, message, 0)))
-    data = conna.recv(MAX_REC_SIZE)
-    conna.close()
+    try:
+        conn = socket(AF_INET, SOCK_STREAM)
+        conn.connect(nodeAddr)
+        conn.send(serialize_message(CtrlMessage(ControlMessageTypes.PUBLISHER_HERE_FIND_MY_SUCCESSOR, message, 0)))
+        data = conn.recv(MAX_REC_SIZE)
+        data=unserialize_message(data)
+        print("*************My eventservice will be:", data.data)
 
-    data = unserialize_message(data)
-    print("*************Response to topic addition:", data.data)
+    finally:
+        conn.shutdown(1)
+        conn.close()
+        print("********Finding successor done*******")
+
+    try:
+        eSnodeIPAddr = (data.data,5555)
+        print("***********eSnodeIPAddr",eSnodeIPAddr)
+        #conn_a = socket(AF_INET, SOCK_STREAM)
+        conn = socket(AF_INET, SOCK_STREAM)
+        print("***********1")
+        conn.connect(eSnodeIPAddr)
+        print("***********2")
+        conn.send(serialize_message(CtrlMessage(ControlMessageTypes.PUBLISHERHERE_STOREOWN_STRENGTH, message, 0)))
+        print("***********3")
+        data = conn.recv(MAX_REC_SIZE)
+        print("***********4")
+        data = unserialize_message(data)
+        print("*************Response to topic addition:", data.data)
+
+    finally:
+        conn.shutdown(1)
+        conn.close()
+        print("********Registered to correct successor*******")
+
 
     #message = socket.recv()
         #print("Received reply:", message)
@@ -100,14 +173,37 @@ def main():
             count = count + 1;
             topic = input("Enter topic id:")
             message = myIPaddress + "@" + str(topic)
-            conn2 = socket(AF_INET, SOCK_STREAM)
-            conn2.connect(eSnodeIPAddr)
-            conn2.send(serialize_message(CtrlMessage(ControlMessageTypes.PUBLISH, message, 0)))
-            data = conn2.recv(MAX_REC_SIZE)
-            conn2.close()
-            data = unserialize_message(data)
-            print("*************Can I publish ?:", data.data)
+            #storing message history
+            store_msg_history(topic,str(count),str(history))
 
+            try:
+                #conn2 = socket(AF_INET, SOCK_STREAM)
+                conn = socket(AF_INET, SOCK_STREAM)
+                conn.connect(eSnodeIPAddr)
+                conn.send(serialize_message(CtrlMessage(ControlMessageTypes.PUBLISH, message, 0)))
+                data = conn.recv(MAX_REC_SIZE)
+                data = unserialize_message(data)
+                if(data.data=="no"):
+                    print("*************Can I publish ?:", data.data)
+                else:
+                    list_of_subs = data.data
+                    print("************list_of_subs",list_of_subs)
+                    no_of_subs=0
+                    if(list_of_subs):
+                        no_of_subs = list_of_subs.count('@') +1
+                    subscribers = list()
+                    for i in range(no_of_subs):
+                        subscribers.append(list_of_subs.split('@')[i])
+
+                    for sub in subscribers:
+                        t= Thread(target=send_message_to_sub,args=(sub,msg_sliding_window,topic))
+                        t.daemon = True
+                        t.start()
+
+            finally:
+                conn.shutdown(1)
+                conn.close()
+                print("******Connection Closed*********")
             # message = input("Enter message:")
             # message = "Kohli hits "+ count +" th ODI century"
             #socket.send("%s %s %i %i %i" % ("message", myIPaddress, topic, count, 0))
@@ -117,25 +213,35 @@ def main():
             topic = input("Enter topic id:")
             own_strength = input("Enter ownership strength corresponding to that topic id:")
             history = input("Enter history for that topic id:")
+            message = myIPaddress + "@" + str(topic) + "@" + str(own_strength)
 
             print("Sending...")
-            conn3 = socket(AF_INET, SOCK_STREAM)
-            conn3.connect(nodeAddr)
-            conn3.send(serialize_message(CtrlMessage(ControlMessageTypes.PUBLISHER_HERE, message, 0)))
-            data = conn3.recv(MAX_REC_SIZE)
-            conn3.close()
-            data = unserialize_message(data)
-            print("*************My eventservice will be:", data.data)
+            try:
+                #conn3 = socket(AF_INET, SOCK_STREAM)
+                conn = socket(AF_INET, SOCK_STREAM)
+                conn.connect(nodeAddr)
+                conn.send(serialize_message(CtrlMessage(ControlMessageTypes.PUBLISHER_HERE_FIND_MY_SUCCESSOR, message, 0)))
+                data = conn.recv(MAX_REC_SIZE)
+                data = unserialize_message(data)
+                print("*************My eventservice will be2:", data.data)
+            finally:
+                conn.shutdown(1)
+                conn.close()
 
             eSnodeIPAddr = (data.data, 5555)
             message = myIPaddress + "@" + str(topic) + "@" + str(own_strength)
-            conn4 = socket(AF_INET, SOCK_STREAM)
-            conn4.connect(eSnodeIPAddr)
-            conn4.send(serialize_message(CtrlMessage(ControlMessageTypes.PUBLISHERHERE_STOREOWN_STRENGTH, message, 0)))
-            data = conn4.recv(MAX_REC_SIZE)
-            conn4.close()
-            data = unserialize_message(data)
-            print("*************Response to topic addition:", data.data)
+
+            try :
+                #conn4 = socket(AF_INET, SOCK_STREAM)
+                conn = socket(AF_INET, SOCK_STREAM)
+                conn.connect(eSnodeIPAddr)
+                conn.send(serialize_message(CtrlMessage(ControlMessageTypes.PUBLISHERHERE_STOREOWN_STRENGTH, message, 0)))
+                data = conn.recv(MAX_REC_SIZE)
+                data = unserialize_message(data)
+                print("*************Response to topic addition2:", data.data)
+            finally:
+                conn.shutdown(1)
+                conn.close()
 
             # socket.connect("tcp://10.0.0.1:%s" % port)
             #socket.send("%s %s %i %i %i" % ("pub", myIPaddress, topic, own_strength, history))

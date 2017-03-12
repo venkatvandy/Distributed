@@ -1,6 +1,8 @@
 import socket
 import sys
 import zmq
+from collections import deque
+
 
 context = zmq.Context()
 IPaddress = sys.argv[1]
