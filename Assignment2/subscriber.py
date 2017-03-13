@@ -7,12 +7,69 @@ from optparse import OptionParser
 from network_ctrl import *
 
 
+succ_dict = {}
 #myIPaddress = sys.argv[1]
-context = zmq.Context()
+
 #socket = context.socket(zmq.REQ)
 # socket.connect ("tcp://localhost:%s" % port)
 #port="5555"
 #socket.connect("tcp://10.0.0.1:%s" % port)
+
+def find_my_successor(myIPaddress,topic,nodeAddr):
+    message = myIPaddress + "@" + str(topic)
+
+    try:
+        conn = socket(AF_INET, SOCK_STREAM)
+        conn.connect(nodeAddr)
+        conn.send(serialize_message(CtrlMessage(ControlMessageTypes.SUBSCRIBER_HERE_FIND_MY_SUCCESSOR, message, 0)))
+        data = conn.recv(MAX_REC_SIZE)
+        data = unserialize_message(data)
+        print("*************My eventservice will be:", data.data)
+        #succ_dict[topic] = data.data
+        return  data.data
+
+    finally:
+        conn.shutdown(1)
+        conn.close()
+
+def register_to_successor(myIPaddress,topic,succ):
+    try:
+        message = myIPaddress + "@" + str(topic)
+        eSnodeIPAddr = (succ, 5555)
+        print("***********eSnodeIPAddr", eSnodeIPAddr)
+        # conn_a = socket(AF_INET, SOCK_STREAM)
+        conn = socket(AF_INET, SOCK_STREAM)
+        conn.connect(eSnodeIPAddr)
+        conn.send(serialize_message(CtrlMessage(ControlMessageTypes.SUBSCRIBER_HERE_STORE_ME, message, 0)))
+        data = conn.recv(MAX_REC_SIZE)
+        data = unserialize_message(data)
+        print("*************Response to topic subscription:", data.data)
+
+    finally:
+        conn.shutdown(1)
+        conn.close()
+
+def receive_msg_from_pub():
+    context = zmq.Context()
+    IPInfo_from_pub = context.socket(zmq.REP)
+    port = "5555"
+    IPInfo_from_pub.bind("tcp://*:%s" % port)
+
+    while True:
+        print("Receiving....");
+        data = IPInfo_from_pub.recv()
+        print("****** Century no:", data)
+        IPInfo_from_pub.send("received")
+
+def refresh(myIPaddress,myDict):
+    while True:
+        time.sleep(60)
+        for topic in myDict.keys():
+            currentIP = myDict[topic]
+            returned_succ = find_my_successor(myIPaddress,topic,("10.0.0.1",5555))
+            if(returned_succ!=currentIP):
+                myDict[topic]=returned_succ
+                register_to_successor(myIPaddress,topic,myDict[topic])
 
 def main():
     parser = OptionParser(usage="usage: %prog [options] filename",
@@ -51,67 +108,35 @@ def main():
         nodeAddr = (eventServiceNodeIP, 5555)
         print("***********nodeAddr", nodeAddr)
 
-        message = myIPaddress + "@" + str(topic)
+        succ_dict[topic] = find_my_successor(myIPaddress,topic,nodeAddr)
+        register_to_successor(myIPaddress,topic,succ_dict[topic])
 
-        try:
-            conn = socket(AF_INET, SOCK_STREAM)
-            conn.connect(nodeAddr)
-            conn.send(serialize_message(CtrlMessage(ControlMessageTypes.SUBSCRIBER_HERE_FIND_MY_SUCCESSOR, message, 0)))
-            data = conn.recv(MAX_REC_SIZE)
-            data=unserialize_message(data)
-            print("*************My eventservice will be:", data.data)
+    t = Thread(target=receive_msg_from_pub, args=())
+    t.daemon = True
+    t.start()
 
-        finally:
-            conn.shutdown(1)
-            conn.close()
-
-        try:
-            eSnodeIPAddr = (data.data, 5555)
-            print("***********eSnodeIPAddr", eSnodeIPAddr)
-            # conn_a = socket(AF_INET, SOCK_STREAM)
-            conn = socket(AF_INET, SOCK_STREAM)
-            conn.connect(eSnodeIPAddr)
-            conn.send(serialize_message(CtrlMessage(ControlMessageTypes.SUBSCRIBER_HERE_STORE_ME, message, 0)))
-            data = conn.recv(MAX_REC_SIZE)
-            data = unserialize_message(data)
-            print("*************Response to topic subscription:", data.data)
-
-        finally:
-            conn.shutdown(1)
-            conn.close()
-
-
-            #socket.send("%s %s %i %i %s" % ("sub",myIPaddress, topic, -1,"blah"))
-            #message = socket.recv()
-            #print(message)
-
-        #socket.close()
-
-    sub_socket = context.socket(zmq.REP)
-    #socket = context.socket(zmq.SUB)
-    #event_serviceIP = "tcp://10.0.0.1:5557"
-    #socket.connect(event_serviceIP)
-
-    #IPfilter = ""
-    #IPfilter = myIPaddress
-
-    # Python 2 - ascii bytes to unicode str
-    #if isinstance(IPfilter, bytes):
-    #    IPfilter = IPfilter.decode('ascii')
-
-    # any subscriber must use the SUBSCRIBE to set a subscription, i.e., tell the
-    # system what it is interested in
-    #socket.setsockopt_string(zmq.SUBSCRIBE, IPfilter)
-
-    IPInfo_from_pub = context.socket(zmq.REP)
-    port = "5555"
-    IPInfo_from_pub.bind("tcp://*:%s" % port)
+    t = Thread(target=refresh, args=(myIPaddress,succ_dict))
+    t.daemon = True
+    t.start()
 
     while True:
-        print("Receiving....");
-        data = IPInfo_from_pub.recv()
-        print("****** Century no:",data)
-        IPInfo_from_pub.send("received")
+        choice = raw_input("\nPress n to exit\n")
+        if (choice == 'n'):
+            message = myIPaddress
+
+            try:
+                conn = socket(AF_INET, SOCK_STREAM)
+                conn.connect(eSnodeIPAddr)
+                conn.send(serialize_message(CtrlMessage(ControlMessageTypes.SUBSCRIBERDEAD, message, 0)))
+                data = conn.recv(MAX_REC_SIZE)
+                data = unserialize_message(data)
+                print("******",data.data)
+
+            finally:
+                conn.shutdown(1)
+                conn.close()
+                break
+
 
 if __name__ == "__main__":
     main()

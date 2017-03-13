@@ -13,6 +13,9 @@ class ControlMessageTypes():
     PUBLISHERHERE_STOREOWN_STRENGTH = 12
     SUBSCRIBER_HERE_STORE_ME = 13
     PUBLISH = 14
+    PUBLISHERDEAD = 15
+    SUBSCRIBERDEAD = 16
+
 
 class MessageTypes():
     MSG_ACK = 8

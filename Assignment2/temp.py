@@ -43,8 +43,33 @@ for i in range(no_of_subs):
 
 print(subscribers[0])'''
 
-list_of_subs = list()
+'''list_of_subs = list()
 no_of_subs=0
 if(list_of_subs):
     no_of_subs = list_of_subs.count('@') +1
-print(no_of_subs)
+print(no_of_subs)'''
+
+'''topic='1';
+subscribers_list=''
+sub_dict={'1':['10.0.0.2','10.0.0.3','10.0.0.4','10.0.0.5']}
+if topic in sub_dict.keys():
+    print("amhsddjsaf")
+    for subscribers in sub_dict[topic]:
+        subscribers_list = subscribers_list + subscribers + "@"
+
+subscribers_list = subscribers_list[:-1]
+print(subscribers_list)'''
+
+for i in range(5):
+    print(i)
+
+sub_dict={'1':['10.0.0.2','10.0.0.3','10.0.0.4','10.0.0.5']}
+IPaddress='10.0.0.5'
+for topics in sub_dict:
+    temp_list = sub_dict[topics]
+    for i in range(len(temp_list)):
+        if (temp_list[i] == IPaddress):
+            del temp_list[i]
+    #sub_dict[topics] = temp_list
+
+print(sub_dict)

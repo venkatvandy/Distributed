@@ -170,34 +170,24 @@ INFO:root:20 10.0.0.20:5555 8
 INFO:root:Pred: 20
 INFO:root:Farming successor list
 INFO:root:Finished farming successor list
-INFO:root:Updating finger 92
+INFO:root:Updating finger 48
 INFO:root:Finger is wrong - changing finger.
 INFO:root:Finished updating finger
-INFO:root:Updating finger 135
-INFO:root:Finished updating finger
-INFO:root:Updating finger 66
+INFO:root:Predecessor is down.
+INFO:root:New pred set
+INFO:root:Farming successor list
+INFO:root:Finished farming successor list
+INFO:root:Updating finger 84
 INFO:root:Finger is wrong - changing finger.
 INFO:root:Finished updating finger
-INFO:root:Updating finger 125
-INFO:root:Finger is wrong - changing finger.
-INFO:root:Finished updating finger
-INFO:root:Updating finger 108
-INFO:root:Finger is wrong - changing finger.
-INFO:root:Detected two finger table errors in a row - refreshing finger table.
-INFO:root:Making request for fingertable construction
-INFO:root:Finished updating finger
-INFO:root:Updating finger 95
-INFO:root:Finished updating finger
-INFO:root:Updating finger 16
-INFO:root:Finger is wrong - changing finger.
-INFO:root:Finished updating finger
-INFO:root:Updating finger 42
-INFO:root:Finger is wrong - changing finger.
-INFO:root:Finished updating finger
-INFO:root:Updating finger 108
+INFO:root:Updating finger 113
 INFO:root:Finger is wrong - changing finger.
 INFO:root:Detected two finger table errors in a row - refreshing finger table.
 INFO:root:Making request for fingertable construction
 INFO:root:Finished updating finger
-INFO:root:Updating finger 55
+INFO:root:Updating finger 46
+INFO:root:Finger is wrong - changing finger.
+INFO:root:Finished updating finger
+INFO:root:Updating finger 30
+INFO:root:Finger is wrong - changing finger.
 INFO:root:Finished updating finger

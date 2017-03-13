@@ -173,28 +173,5 @@ INFO:root:Got root node request
 INFO:root:Farming successor list
 INFO:root:Got root node request
 INFO:root:Finished farming successor list
-INFO:root:Updating finger 126
-INFO:root:Finished updating finger
-INFO:root:Got root node request
-INFO:root:Updating finger 75
-INFO:root:Finished updating finger
-INFO:root:Updating finger 129
-INFO:root:Finished updating finger
-INFO:root:Updating finger 152
-INFO:root:Finished updating finger
-INFO:root:Updating finger 52
-INFO:root:Finished updating finger
-INFO:root:Updating finger 16
-INFO:root:Finished updating finger
-INFO:root:Updating finger 158
-INFO:root:Finished updating finger
-INFO:root:Updating finger 149
-INFO:root:Finished updating finger
-INFO:root:Updating finger 68
-INFO:root:Finished updating finger
-INFO:root:Updating finger 7
-INFO:root:Finished updating finger
-INFO:root:Updating finger 108
-INFO:root:Finished updating finger
-INFO:root:Updating finger 48
+INFO:root:Updating finger 87
 INFO:root:Finished updating finger

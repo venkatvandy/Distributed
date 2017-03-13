@@ -89,34 +89,82 @@ def graceful_exit(exitCode):
     exit(exitCode)
 
 def add_to_ownership_stength_table(topic, ownershipStrength, IPaddress):
-    own_lock.acquire()
-    print("***********1.1")
-    ownership_strength_table.setdefault(topic, {})[ownershipStrength]=IPaddress
-    print("***********1.2")
-    own_lock.release()
+    try:
+        own_lock.acquire()
+        print("***********1.1")
+        ownership_strength_table.setdefault(topic, {})[ownershipStrength]=IPaddress
+        print("***********1.2")
+    finally:
+        own_lock.release()
 
 def check_if_publisher_can_publish(IPaddress,topic):
     table = {}
-    own_lock.acquire()
-    table = ownership_strength_table[topic]
-    own_lock.release()
+    try:
+        own_lock.acquire()
+        table = ownership_strength_table[topic]
+    finally:
+        own_lock.release()
     max_own_strength = max(table.keys(), key=int)
     if table[max_own_strength] == IPaddress:
         #return "yes"
         if topic in sub_dict.keys():
+            subscribers_list=''
             for subscribers in sub_dict[topic]:
-                subscribers_list = subscribers+"@"
+                subscribers_list = subscribers_list+subscribers+"@"
+
+            print("*****Subscriber List:", subscribers_list)
 
             if(subscribers_list):
-                subscribers_list = subscribers_list[:-1]   #removing the last "@" from the string
+                subscribers_list = subscribers_list[:-1]  #removing the last "@" from the string
+                print("*****Subscriber List:",subscribers_list)
                 return subscribers_list
     else:
         return "no"
 
 def register_subscriber(interestedTopicID, IPaddress):
-    sub_lock.acquire()
-    sub_dict.setdefault(interestedTopicID, []).append(IPaddress)
-    sub_lock.release()
+    try:
+        sub_lock.acquire()
+        flag=0
+        #check if dic has a key = incomng topic
+        if interestedTopicID in sub_dict.keys():
+            temp_list = sub_dict[interestedTopicID]
+            for IP in temp_list:
+                if IP==IPaddress:
+                    flag=1
+                    break
+            if flag==0:
+                sub_dict.setdefault(interestedTopicID, []).append(IPaddress)
+        else:
+            sub_dict.setdefault(interestedTopicID, []).append(IPaddress)
+    finally:
+        sub_lock.release()
+
+def pub_died(IPaddress):
+    try:
+        own_lock.acquire()
+        for topics, table in ownership_strength_table.items():
+            for own_str, IP in table.items():
+                if IPaddress==IP:
+                    del table[own_str]
+                    break
+
+        print(ownership_strength_table)
+    finally:
+        own_lock.release()
+
+def sub_died(IPaddress):
+    try:
+        sub_lock.acquire()
+        for topics in sub_dict:
+            temp_list=sub_dict[topics]
+            for i in range (len(temp_list)):
+                if(temp_list[i]==IPaddress):
+                    del temp_list[i]
+                    break
+            sub_dict[topics]=temp_list
+        print("**** Sub Dict:",sub_dict)
+    finally:
+        sub_lock.release()
 
 def handle_ctrl_connection(conn, addr):
     global thisNode
@@ -181,8 +229,9 @@ def handle_ctrl_connection(conn, addr):
         elif message.messageType == ControlMessageTypes.PUBLISHER_HERE_FIND_MY_SUCCESSOR:
             IPaddressOfPub = message.data.split('@')[0]
             mytopicID = message.data.split('@')[1]
-            own_strength = message.data.split('@')[2]
+            #own_strength = message.data.split('@')[2]
             #topic_key = generate_lookup_key_with_index(thisNode.ID,int(mytopicID))
+
             topic_key = hash_str(mytopicID)
             print("*******topic_key:", mytopicID)
             print("*******topic_key:",topic_key.key)
@@ -232,6 +281,17 @@ def handle_ctrl_connection(conn, addr):
             retMsg = CtrlMessage(MessageTypes.MSG_ACK, "Done", 0)
             conn.send(serialize_message(retMsg))
 
+        elif message.messageType == ControlMessageTypes.PUBLISHERDEAD:
+            IPaddressOfPub = message.data
+            pub_died(IPaddressOfPub)
+            retMsg = CtrlMessage(MessageTypes.MSG_ACK, "Publisher Removed", 0)
+            conn.send(serialize_message(retMsg))
+
+        elif message.messageType == ControlMessageTypes.SUBSCRIBERDEAD:
+            IPaddressOfSub = message.data
+            sub_died(IPaddressOfSub)
+            retMsg = CtrlMessage(MessageTypes.MSG_ACK, "Subscriber Removed", 0)
+            conn.send(serialize_message(retMsg))
 
         #elif message.messageType == MessageTypes.SUBSCRIBER_HERE:
         else:
