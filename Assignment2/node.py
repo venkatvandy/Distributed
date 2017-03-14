@@ -188,6 +188,13 @@ def handle_ctrl_connection(conn, addr):
             print "Got root node request"
             logging.info("Got root node request")
             tmpNode = get_root_node(message.data)
+
+            fingerTableLock.acquire()
+            print("*****Finger******")
+            for i in range(6):
+                print(i,fingerTable[i].ID.key)
+            fingerTableLock.release()
+
             retMsg = CtrlMessage(MessageTypes.MSG_ACK, tmpNode, 0)
             conn.send(serialize_message(retMsg))
 
@@ -317,7 +324,8 @@ def get_next_node(node, key):
     message = send_ctrl_message_with_ACK(key, ControlMessageTypes.GET_NEXT_NODE, 0, node, DEFAULT_TIMEOUT)
     if message is None:
         #TODO: handle this - should return successor on failure
-        pass
+        #pass
+        return(1,thisNode)
     return (message.extra, message.data)
 
 def get_next_node_predecessor(node, key):
@@ -391,7 +399,8 @@ def get_root_node_request(requestNode, key):
     message = send_ctrl_message_with_ACK(key, ControlMessageTypes.GET_ROOT_NODE_REQUEST, 0, requestNode, DEFAULT_TIMEOUT * 4)
     if message is None:
         #TODO: handle this
-        pass
+        #pass
+        return thisNode
     return message.data
 
 def get_immediate_successor_node():
@@ -697,8 +706,12 @@ def fix_fingers_stabilization_routine():
     numFingerErrors = 0
 
     while 1:
-        time.sleep(random.randint(25, 50))
-        i = random.randint(1, 159)
+        #time.sleep(random.randint(10, 20))
+        time.sleep(10)
+        update_entire_finger_table()
+        print("****Venki Finger Table updated****");
+        '''#i = random.randint(1, 159)
+        i = random.randint(1, 7)
         #print "Updating finger " + str(i)
         logging.info("Updating finger " + str(i))
         searchKey = generate_lookup_key_with_index(thisNode.ID, i)
@@ -732,7 +745,7 @@ def fix_fingers_stabilization_routine():
             update_entire_finger_table()
             count = 0
         else:
-            count+=1
+            count+=1'''
 
 def main():
     global thisNode

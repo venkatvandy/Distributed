@@ -1,5 +1,0 @@
-INFO:root:Set listening port to 5555
-INFO:root:Set my IP to 10.0.0.25
-INFO:root:This ID: 25
-INFO:root:Sleeping for 1 seconds while listening threads are created.
-INFO:root:Joining using existing node:10.0.0.50:5555

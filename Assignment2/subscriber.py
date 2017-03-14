@@ -63,7 +63,7 @@ def receive_msg_from_pub():
 
 def refresh(myIPaddress,myDict):
     while True:
-        time.sleep(60)
+        time.sleep(25)
         for topic in myDict.keys():
             currentIP = myDict[topic]
             returned_succ = find_my_successor(myIPaddress,topic,("10.0.0.1",5555))
@@ -78,6 +78,8 @@ def main():
                       action="store",
                       type="string",
                       dest="existingnode",
+
+
                       help="Use an existing node to join an existing network.")
     parser.add_option("-m", "--myIP",
                       action="store",

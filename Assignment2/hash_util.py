@@ -71,7 +71,8 @@ def add_keys(k1, k2):
     #print('FROM HASH-------------')
     #print(k1.key)
     #print(k2.key)
-    x = (int(k1.key) + int(k2.key))  % 160#MAX_INDEX
+    #x = (int(k1.key) + int(k2.key))  % 160#MAX_INDEX
+    x = (int(k1.key) + int(k2.key)) % 64  # MAX_INDEX
     return Key(str(x))
 
 #    x = (int(k1.key, 16) + int(k2.key, 16)) % MAX_INDEX
@@ -81,7 +82,8 @@ def add_keys(k1, k2):
 def subtract_keys(k1, k2):
     x = (int(k1.key) - int(k2.key))
     if x < 0:
-        x = 160 + x #MAX_INDEX
+        #x = 160 + x #MAX_INDEX
+        x = 64 + x  # MAX_INDEX
     return Key(str(x))
 
 #    x = (int(k1.key, 16) - int(k2.key, 16))
