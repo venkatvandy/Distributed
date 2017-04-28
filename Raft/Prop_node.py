@@ -28,65 +28,25 @@ thisNode.ctrlPort = 7228
 thisNode.relayPort = 7229
 
 currentleaderNode = Node()
-
 log = []
 current_index=0
 acc_Table = []
 drop_table = []
-ProposalID = 0
-LastProposalID = 0
-SendProposalValue = ''
-ProposalValue = {}
-ProposalValueLock = Lock()
-Acks_Cnt = set()
-Acks_CntLock = Lock()
-Accept_Cnt = set()
-Accept_CntLock = Lock()
-Anti_Dict = {}
-Anti_DictLock = Lock()
-Quo_Cnt = 0
-i_am_leader = 0
-have_i_voted_already_for_this_term = 0
+state= ServerStates.FOLLOWER
 cluster_count=0
 term_number = 0
 last_term_i_voted_for = 0
-
-
-ProposeFlag = 0
-ProposeFlagLock = Lock()
-
-SendFlag = 0
-SendFlagLock = Lock()
-
-PaxosFlag = 0
-PaxosFlagLock = Lock()
-
+voting_lock = Lock()
 
 def handle_ctrl_connection(conn, addr):
     global thisNode
     global acc_Table
     global drop_table
-    global ProposalID
-    global LastProposalID
-    global ProposalValue
-    global Acks_Cnt
-    global Anti_Dict
-    global SendFlag
-    global SendFlagLock
-    global ProposeFlagLock
-    global Anti_DictLock
-    global ProposalValueLock
-    global SendProposalValue
-    global Accept_Cnt
-    global Accept_CntLock
-    global PaxosFlag
-    global PaxosFlagLock
-    global have_i_voted_already_for_this_term
     global currentleaderNode
     global last_term_i_voted_for
     global term_number
-    global i_am_leader
     global current_index
+    global state
 
     data = conn.recv(MAX_REC_SIZE)
     conn.settimeout(DEFAULT_TIMEOUT)
@@ -102,9 +62,19 @@ def handle_ctrl_connection(conn, addr):
             retMsg = CtrlMessage(MessageTypes.MSG_ACK, thisNode, retCode)
             conn.send(serialize_message(retMsg))
 
+        elif message.messageType == ControlMessageTypes.STARTING_ELECTION_PHASE:
+            retCode = 0
+            if(state == ServerStates.CANDIDATE):
+                retMsg = CtrlMessage(MessageTypes.ELECTION_ALREADY_RUNNING, thisNode, retCode)
+            else:
+                state = ServerStates.FOLLOWER
+                term_number = term_number + 1
+                retMsg = CtrlMessage(MessageTypes.NOTED, thisNode, retCode)
+            conn.send(serialize_message(retMsg))
+
         elif message.messageType == ControlMessageTypes.ASK_FOR_VOTE:
             retCode = 0
-            if(last_term_i_voted_for <> int(message.extra)):
+            if(last_term_i_voted_for != int(message.extra)):
                 print("Voting for term ",message.extra)
                 retMsg = CtrlMessage(MessageTypes.I_VOTE_FOR_YOU, thisNode, retCode)
                 last_term_i_voted_for = int(message.extra)
@@ -114,24 +84,34 @@ def handle_ctrl_connection(conn, addr):
 
         elif message.messageType == ControlMessageTypes.I_AM_LEADER:
             currentleaderNode = message.data
-            term_number = int(message.extra)
-            i_am_leader = 0
+            #term_number = int(message.extra)
+            state =  ServerStates.FOLLOWER
             print("---------------------The leader for term ",term_number," is:",message.data.IPAddr,"------------------------")
 
         elif message.messageType == ControlMessageTypes.REPLICATE_LOG:
+            retCode = 0
             if(current_index == int(message.extra)):
                 #log[current_index] = message.data
                 log.append(message.data)
                 print("Log replicated: ", log[current_index])
                 current_index = current_index +1
+                retMsg = CtrlMessage(MessageTypes.LOG_RECORDED, thisNode, retCode)
+            elif (current_index < int(message.extra)):
+                retMsg = CtrlMessage(MessageTypes.I_AM_BEHIND, current_index, retCode)
+            conn.send(serialize_message(retMsg))
+
 
         elif message.messageType == ControlMessageTypes.ACCEPT_REQUEST_FROM_CLIENTS:
-            if(i_am_leader==1):
+            if (state == ServerStates.LEADER):
                 #log[current_index]= term_number
                 log.append(term_number)
                 print("Log recorded: ",log[current_index])
                 for servers in acc_Table:
                     msg = send_ctrl_message_with_ACK(term_number, ControlMessageTypes.REPLICATE_LOG,current_index,servers,DEFAULT_TIMEOUT * 4)
+                    if(msg.messageType == MessageTypes.I_AM_BEHIND ):
+                        for i in range(msg.data,current_index+1):
+                            send_ctrl_message_with_ACK(log[i], ControlMessageTypes.REPLICATE_LOG, i,
+                                                       servers, DEFAULT_TIMEOUT * 4)
                 current_index = current_index + 1
 
             else:
@@ -148,122 +128,11 @@ def handle_ctrl_connection(conn, addr):
             for i in drop_table:
                 b.add(i.IPAddr)
             for i in message.data:
-                if (i.IPAddr not in a) and (i.IPAddr <> thisNode.IPAddr) and (i.IPAddr not in b):
+                if (i.IPAddr not in a) and (i.IPAddr != thisNode.IPAddr) and (i.IPAddr not in b):
                     acc_Table.append(i)
 
             retMsg = CtrlMessage(MessageTypes.MSG_ACK, thisNode, retCode)
             conn.send(serialize_message(retMsg))
-
-        elif message.messageType == ControlMessageTypes.LEADER_PROPOSE:
-            print("Incoming Proposal Number ", message.data)
-            inPID = int(message.data)
-            if LastProposalID < inPID: #ProposalID == 0 and
-                print("1..................1")
-                send_Leader_Response(message.extra, ControlMessageTypes.LEADER_GO)
-                print("2..................2")
-                retMsg = CtrlMessage(MessageTypes.MSG_ACK, thisNode, 0)
-                conn.send(serialize_message(retMsg))
-            else:
-                print("4..................4")
-                send_Leader_Response(message.extra,ControlMessageTypes.LEADER_NO)
-                retMsg = CtrlMessage(MessageTypes.MSG_ACK, thisNode, 0)
-                print("6..................6")
-                conn.send(serialize_message(retMsg))
-
-        elif message.messageType == ControlMessageTypes.LEADER_GO:
-            print("7.....................7")
-            Acks_CntLock.acquire()
-            Acks_Cnt.add(message.data.IPAddr)
-            print("+++++++++++++++++++++++++++++++++++++++++")
-            print(Acks_Cnt)
-            print("+++++++++++++++++++++++++++++++++++++++++")
-            SendFlagLock.acquire()
-            aa = SendFlag
-            SendFlagLock.release()
-            if(len(Acks_Cnt) >= Quo_Cnt) and aa == 0:
-                SendFlagLock.acquire()
-                SendFlag = 1
-                SendFlagLock.release()
-                Acks_Cnt = set()
-            Acks_CntLock.release()
-            retMsg = CtrlMessage(MessageTypes.MSG_ACK, thisNode, 0)
-            conn.send(serialize_message(retMsg))
-        elif message.messageType == ControlMessageTypes.LEADER_NO:
-            #Currently only if ur proposal id is old
-            print("8.....................8")
-            Anti_DictLock.acquire()
-            if len(Anti_Dict) == 0 and PaxosFlag == 1:
-                x,y = message.data
-                Anti_Dict[x] = y
-                SendFlagLock.acquire()
-                SendFlag = 1
-                SendFlagLock.release()
-            Anti_DictLock.release()
-            retMsg = CtrlMessage(MessageTypes.MSG_ACK, thisNode, 0)
-            conn.send(serialize_message(retMsg))
-        elif message.messageType == ControlMessageTypes.SEND_VAL:
-            ProposalValueLock.acquire()
-            x,y = message.data
-            if x in ProposalValue.keys():
-                print("Old Value Returned")
-            else:
-                ProposalValue[x] = y
-                LastProposalID = x
-            ProposalValueLock.release()
-            send_Leader_Response(message.extra,ControlMessageTypes.VAL_ACCEPTED)
-            retMsg = CtrlMessage(MessageTypes.MSG_ACK, thisNode, 0)
-            print("$$$$$$---VAL ACCEPTED---$$$$$$$")
-            conn.send(serialize_message(retMsg))
-        elif message.messageType == ControlMessageTypes.VAL_ACCEPTED:
-            #Learnt a new Value
-            PaxosFlagLock.acquire()
-            iPax_Flag = PaxosFlag
-            PaxosFlagLock.release()
-            Accept_CntLock.acquire()
-            if iPax_Flag == 1:
-                Accept_Cnt.add(message.data.IPAddr)
-                print("<<<<<<<<<Current Accepted List>>>>>>>>>>>>")
-                print(Accept_Cnt)
-            if (len(Accept_Cnt) >= Quo_Cnt) and iPax_Flag == 1:
-                ProposalValueLock.acquire()
-                ProposalValue[ProposalID] = SendProposalValue
-                #ProposalValueLock.release()
-                Accept_Cnt = set()
-                Acks_CntLock.acquire()
-                Acks_Cnt = set()
-                Acks_CntLock.release()
-                LastProposalID = ProposalID
-                Anti_DictLock.acquire()
-                Anti_Dict = {}
-                Anti_DictLock.release()
-                PaxosFlagLock.acquire()
-                PaxosFlag = 0
-                PaxosFlagLock.release()
-                print("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
-                print("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
-                print("---------PAXOS ROUND COMPLETED------------")
-                print(ProposalValue)
-                print("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
-                print("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
-                ProposalValueLock.release()
-            Accept_CntLock.release()
-
-
-
-
-def send_Leader_Response(someNode, msgType):
-    global thisNode
-    #time.sleep(random.randint(4,10))
-    if msgType == ControlMessageTypes.LEADER_NO:
-        send_ctrl_message_with_ACK1((LastProposalID,ProposalValue[LastProposalID]), msgType, 3, someNode, DEFAULT_TIMEOUT * 4)
-    elif msgType == ControlMessageTypes.LEADER_GO:
-        send_ctrl_message_with_ACK1(thisNode, msgType, 3, someNode, DEFAULT_TIMEOUT * 4)
-    elif msgType == ControlMessageTypes.VAL_ACCEPTED:
-        send_ctrl_message_with_ACK1(thisNode, msgType, 4, someNode, DEFAULT_TIMEOUT * 4)
-
-
-
-
 
 def join_network(someNode):
     global thisNode
@@ -302,120 +171,66 @@ def stabilization_routine():
             #    print(message.data)
             time.sleep(random.randint(4,7))
 
-def Propose_Paxos():
-    global thisNode
-    global acc_Table
-    global drop_table
-    global ProposalID
-    global LastProposalID
-    global Anti_Dict
-    global Acks_Cnt
-    global Quo_Cnt
-    global ProposalValue
-    global ProposeFlag
-
-    time.sleep(1)
-
-    while 1:
-        ProposeFlagLock.acquire()
-        i = ProposeFlag
-        ProposeFlag = 0
-        ProposeFlagLock.release()
-        if i == 1:
-            print("----------------------------SENDING PHASE 1 PROPOSALS--------------------------------")
-            ProposalID = LastProposalID + 1
-            for i in acc_Table:
-                message = send_ctrl_message_with_ACK1(ProposalID, ControlMessageTypes.LEADER_PROPOSE, thisNode, i,
-                                                      DEFAULT_TIMEOUT * 4)
-        #else:
-        #    time.sleep(5)
-
 def start_leader_election():
     global thisNode
-    global i_am_leader
     global term_number
     global currentleaderNode
+    global state
+    global voting_lock
 
-    term_number = term_number+1
+    voting_lock.acquire()
+
+    state = ServerStates.CANDIDATE
     cluster_count = len(acc_Table)+1
-    print("---------------------Total number of nodes in cluster:",cluster_count,"------------------------")
+    print("--------Total servers in cluster:",cluster_count,"-------")
+    print("My state is: Candidate")
     count=1
-    for i in acc_Table:
-        message = send_ctrl_message_with_ACK(thisNode, ControlMessageTypes.ASK_FOR_VOTE, term_number, i,
+
+    for server in acc_Table:
+        message = send_ctrl_message_with_ACK(thisNode, ControlMessageTypes.STARTING_ELECTION_PHASE, term_number, server,
                                          DEFAULT_TIMEOUT * 4)
+        if (message.messageType == MessageTypes.ELECTION_ALREADY_RUNNING):
+            state = ServerStates.FOLLOWER
+            return
+
+    term_number = term_number + 1
+
+    for server in acc_Table:
+        message = send_ctrl_message_with_ACK(thisNode, ControlMessageTypes.ASK_FOR_VOTE, term_number, server,
+                                         DEFAULT_TIMEOUT * 4)
+
         if(message.messageType == MessageTypes.I_VOTE_FOR_YOU):
             count=count+1
             if(count>cluster_count/2):
-                i_am_leader = 1
+                state = ServerStates.LEADER
                 currentleaderNode=thisNode
-                print("---------------------I am the leader for term ",term_number,"------------------------")
+                print("------I am the leader for term ",term_number,"------")
                 break
 
     for i in acc_Table:
         message = send_ctrl_message_with_ACK(thisNode, ControlMessageTypes.I_AM_LEADER, term_number, i,
                                              DEFAULT_TIMEOUT * 4)
+    voting_lock.release()
 
+def display_state_of_server():
+    global state
 
-def Send_Paxos():
-    global SendFlag
-    global SendFlagLock
-    global Anti_DictLock
-    global Anti_Dict
-    global ProposalID
-    global LastProposalID
-    global ProposalValue
-    global SendProposalValue
-
-    time.sleep(1)
     while 1:
-        SendFlagLock.acquire()
-        k = SendFlag
-        SendFlag = 0
-        SendFlagLock.release()
-        if k == 1:
-            print("!!!!!!!!@@@@@Proposal Complete@@@@@!!!!!!!!!!!")
-            Anti_DictLock.acquire()
-            local_Dict = copy.deepcopy(Anti_Dict)
-            Anti_DictLock.release()
-            ADLen = len(local_Dict.keys())
-            if ADLen >0:
-                print("------------------Using old Values----------------------")
-                ProposalID = max(local_Dict.keys())
-                LastProposalID = ProposalID
-                SendProposalValue = local_Dict[ProposalID]
-            else:
-                print("------------------Using NEW Value-----------------------")
-                ranVal = 'A' + str(random.randint(100,999))
-                SendProposalValue = copy.deepcopy(ranVal)
-                print("----------------Sending Phase 2a Accepts----------------")
-            for i in acc_Table:
-                message = send_ctrl_message_with_ACK1((ProposalID,SendProposalValue), ControlMessageTypes.SEND_VAL, thisNode, i,
-                                                      DEFAULT_TIMEOUT * 4)
-            k = 0
-
-        #else:
-        #    time.sleep(5)
-
+        if(state == ServerStates.FOLLOWER):
+            print("My state is : Follower")
+        elif(state == ServerStates.LEADER):
+            print("My state is : Leader")
+        else:
+            print("My state is : Candidate")
+        time.sleep(5)
 
 
 def main():
     global thisNode
     global acc_Table
     global drop_table
-    global ProposalID
-    global LastProposalID
-    global Anti_Dict
-    global Acks_Cnt
-    global Quo_Cnt
-    global ProposalValue
-    global ProposeFlag
-    global Acks_CntLock
-    global Accept_Cnt
-    global Accept_CntLock
-    global SendProposalValue
-    global PaxosFlag
-    global PaxosFlagLock
     global log
+    global state
 
 
     parser = OptionParser(usage="usage: %prog [options] filename",
@@ -457,27 +272,17 @@ def main():
     stabilizer.daemon = True
     stabilizer.start()
 
-    '''Propose_Routine = Thread(target=Propose_Paxos)
-    Propose_Routine.daemon = True
-    Propose_Routine.start()
-
-    Send_Routine = Thread(target=Send_Paxos)
-    Send_Routine.daemon = True
-    Send_Routine.start()'''
-
+    display_State_Routine = Thread(target=display_state_of_server)
+    display_State_Routine.daemon = True
+    display_State_Routine.start()
 
     # Wait forever
     while 1:
         # The threads should never die
         listenCtrlThread.join(1)
-        # listenThread.join(1)
         print("\nOptions:\n")
-        '''print("1: Press 1 to print expored node list\n")
-        print("2: Press 2 to start a paxos round")
-        print("3: Press 3 to print Paxos Information")'''
-
-        print("1: Press 1 to start leader election\n")
-        print("1: Press 2 to print log status\n")
+        print("Press 1 to start leader election\n")
+        print("Press 2 to print log status\n")
 
         j = raw_input("")
 
@@ -491,42 +296,6 @@ def main():
         else:
             print("Incorrect Input")
 
-
-
-        '''elif j == "2" :
-            print("Chappa Chappa Charkha Chale")
-            if (len(acc_Table) < 3):
-                print("Not enough acceptors")
-                #return "Cannot Start a Paxos Round"
-            elif len(drop_table) > 0 and ProposalID == 0:
-                print("===================================")
-                print("SYSTEM STILL STABILIZING...PLZ WAIT")
-                print("===================================")
-                return "Cannot Start a Paxos Round"
-            elif PaxosFlag == 0:
-                PaxosFlagLock.acquire()
-                PaxosFlag = 1
-                PaxosFlagLock.release()
-                Accept_CntLock.acquire()
-                Accept_Cnt = set()
-                Accept_CntLock.release()
-                Acks_CntLock.acquire()
-                Acks_Cnt = set()
-                Acks_CntLock.release()
-                Quo_Cnt = len(acc_Table) / 2 + 1
-                print("Quorum Requirement: ", Quo_Cnt)
-                ProposeFlagLock.acquire()
-                ProposeFlag = 1
-                ProposeFlagLock.release()
-                print("Propose Flag SET")
-            else:
-                print("Can't Start a Paxos Round NOW")
-                #print(Run_Paxos())
-            #wait_for_ctrl_connections(thisNode,get_leader())
-        elif j == "3":
-            ProposalValueLock.acquire()
-            print(ProposalValue)
-            ProposalValueLock.release()'''
     return 0
 
 if __name__ == "__main__":

@@ -13,10 +13,19 @@ class ControlMessageTypes():
     I_AM_LEADER = 9
     ACCEPT_REQUEST_FROM_CLIENTS = 14
     REPLICATE_LOG = 15
+    STARTING_ELECTION_PHASE= 18
 
 class MessageTypes():
     MSG_ACK = 10
     PING = 11
     I_VOTE_FOR_YOU = 12
     I_DO_NOT_VOTE_FOR_YOU = 13
-    
+    ELECTION_ALREADY_RUNNING = 19
+    NOTED = 20
+    LOG_RECORDED = 21
+    I_AM_BEHIND = 22
+
+class ServerStates():
+    CANDIDATE = 15
+    LEADER = 16
+    FOLLOWER = 17
