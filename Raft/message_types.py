@@ -11,6 +11,8 @@ class ControlMessageTypes():
     VAL_ACCEPTED = 7
     ASK_FOR_VOTE = 8
     I_AM_LEADER = 9
+    ACCEPT_REQUEST_FROM_CLIENTS = 14
+    REPLICATE_LOG = 15
 
 class MessageTypes():
     MSG_ACK = 10

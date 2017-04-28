@@ -30,6 +30,7 @@ thisNode.relayPort = 7229
 currentleaderNode = Node()
 
 log = []
+current_index=0
 acc_Table = []
 drop_table = []
 ProposalID = 0
@@ -84,12 +85,15 @@ def handle_ctrl_connection(conn, addr):
     global currentleaderNode
     global last_term_i_voted_for
     global term_number
+    global i_am_leader
+    global current_index
 
     data = conn.recv(MAX_REC_SIZE)
     conn.settimeout(DEFAULT_TIMEOUT)
 
     if data:
         message = unserialize_message(data)
+
 
         if message.messageType == ControlMessageTypes.JOIN_NETWORK:
             retCode = 0
@@ -111,7 +115,29 @@ def handle_ctrl_connection(conn, addr):
         elif message.messageType == ControlMessageTypes.I_AM_LEADER:
             currentleaderNode = message.data
             term_number = int(message.extra)
+            i_am_leader = 0
             print("---------------------The leader for term ",term_number," is:",message.data.IPAddr,"------------------------")
+
+        elif message.messageType == ControlMessageTypes.REPLICATE_LOG:
+            if(current_index == int(message.extra)):
+                #log[current_index] = message.data
+                log.append(message.data)
+                print("Log replicated: ", log[current_index])
+                current_index = current_index +1
+
+        elif message.messageType == ControlMessageTypes.ACCEPT_REQUEST_FROM_CLIENTS:
+            if(i_am_leader==1):
+                #log[current_index]= term_number
+                log.append(term_number)
+                print("Log recorded: ",log[current_index])
+                for servers in acc_Table:
+                    msg = send_ctrl_message_with_ACK(term_number, ControlMessageTypes.REPLICATE_LOG,current_index,servers,DEFAULT_TIMEOUT * 4)
+                current_index = current_index + 1
+
+            else:
+                send_ctrl_message_with_ACK(message.data, ControlMessageTypes.ACCEPT_REQUEST_FROM_CLIENTS,0 , currentleaderNode,
+                                                     DEFAULT_TIMEOUT * 4)
+
 
         elif message.messageType == ControlMessageTypes.SYNC_NETWORK:
             retCode = 0
@@ -308,6 +334,7 @@ def start_leader_election():
     global thisNode
     global i_am_leader
     global term_number
+    global currentleaderNode
 
     term_number = term_number+1
     cluster_count = len(acc_Table)+1
@@ -320,6 +347,7 @@ def start_leader_election():
             count=count+1
             if(count>cluster_count/2):
                 i_am_leader = 1
+                currentleaderNode=thisNode
                 print("---------------------I am the leader for term ",term_number,"------------------------")
                 break
 
@@ -387,6 +415,7 @@ def main():
     global SendProposalValue
     global PaxosFlag
     global PaxosFlagLock
+    global log
 
 
     parser = OptionParser(usage="usage: %prog [options] filename",
@@ -414,6 +443,7 @@ def main():
         tmpNode = Node()
         tmpNode.IPAddr = options.existingnode
         join_network(tmpNode)
+
 
     print("MY IP ADDRESS IS ", thisNode.IPAddr)
 
@@ -447,13 +477,16 @@ def main():
         print("3: Press 3 to print Paxos Information")'''
 
         print("1: Press 1 to start leader election\n")
+        print("1: Press 2 to print log status\n")
+
         j = raw_input("")
-        print("You selected: ", j)
 
         if (j == "1"):
-            '''try:
-            except:'''
             start_leader_election()
+
+        elif j=="2" :
+            for i in log:
+                print(i)
 
         else:
             print("Incorrect Input")
