@@ -72,8 +72,8 @@ def send_ctrl_message_with_ACK(message, messageType, extra, requestNode, timeout
         data = conn.recv(MAX_REC_SIZE)
         #print("::::::::::::ACK Return::::::::::::")
     except:
-        print("qqqqqqqqqqqqqqqqqqq")
-        print("Unexpected error:", sys.exc_info()[0])
+        print("The leader node is dead. Please elect a new leader")
+        #print("Unexpected error:", sys.exc_info()[0])
         return CtrlMessage(ControlMessageTypes.NODE_DROP,requestNode,0)
     if data:
         try:
