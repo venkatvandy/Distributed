@@ -14,6 +14,7 @@ class ControlMessageTypes():
     ACCEPT_REQUEST_FROM_CLIENTS = 14
     REPLICATE_LOG = 15
     STARTING_ELECTION_PHASE= 18
+    UPDATE_YOUR_TERM_NUMBER_FROM_CURRENT_LEADER = 23
 
 class MessageTypes():
     MSG_ACK = 10
@@ -24,6 +25,7 @@ class MessageTypes():
     NOTED = 20
     LOG_RECORDED = 21
     I_AM_BEHIND = 22
+    UPDATED_MY_TERM = 24
 
 class ServerStates():
     CANDIDATE = 15

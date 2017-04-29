@@ -91,14 +91,22 @@ def handle_ctrl_connection(conn, addr):
 
         elif message.messageType == ControlMessageTypes.REPLICATE_LOG:
             retCode = 0
-            if(current_index == int(message.extra)):
+            log_index = int(message.extra)
+            log_value = message.data
+            if(current_index == log_index):
                 #log[current_index] = message.data
-                log.append(message.data)
+                log.append(log_value)
                 print("Log replicated: ", log[current_index])
                 current_index = current_index +1
                 retMsg = CtrlMessage(MessageTypes.LOG_RECORDED, thisNode, retCode)
-            elif (current_index < int(message.extra)):
+            elif (current_index < log_index):
                 retMsg = CtrlMessage(MessageTypes.I_AM_BEHIND, current_index, retCode)
+            conn.send(serialize_message(retMsg))
+
+        elif message.messageType == ControlMessageTypes.UPDATE_YOUR_TERM_NUMBER_FROM_CURRENT_LEADER:
+            retCode = 0
+            term_number = message.data
+            retMsg = CtrlMessage(MessageTypes.UPDATED_MY_TERM, current_index, retCode)
             conn.send(serialize_message(retMsg))
 
 
@@ -110,9 +118,12 @@ def handle_ctrl_connection(conn, addr):
                 for servers in acc_Table:
                     msg = send_ctrl_message_with_ACK(term_number, ControlMessageTypes.REPLICATE_LOG,current_index,servers,DEFAULT_TIMEOUT * 4)
                     if(msg.messageType == MessageTypes.I_AM_BEHIND ):
-                        for i in range(msg.data,current_index+1):
+                        starting_index_of_log_of_lagging_server = msg.data
+                        for i in range(starting_index_of_log_of_lagging_server,current_index+1):
                             send_ctrl_message_with_ACK(log[i], ControlMessageTypes.REPLICATE_LOG, i,
                                                        servers, DEFAULT_TIMEOUT * 4)
+                        send_ctrl_message_with_ACK(term_number, ControlMessageTypes.UPDATE_YOUR_TERM_NUMBER_FROM_CURRENT_LEADER, i,
+                                                   servers, DEFAULT_TIMEOUT * 4)
                 current_index = current_index + 1
 
             else:
