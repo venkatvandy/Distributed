@@ -74,12 +74,13 @@ def handle_ctrl_connection(conn, addr):
 
         elif message.messageType == ControlMessageTypes.ASK_FOR_VOTE:
             retCode = 0
-            if(last_term_i_voted_for != int(message.extra)):
+            incoming_term_number  = int(message.extra)
+            if incoming_term_number < term_number:
+                    retMsg = CtrlMessage(MessageTypes.I_DO_NOT_VOTE_FOR_YOU, thisNode, retCode)
+            else:
                 print("Voting for term ",message.extra)
                 retMsg = CtrlMessage(MessageTypes.I_VOTE_FOR_YOU, thisNode, retCode)
-                last_term_i_voted_for = int(message.extra)
-            else:
-                retMsg = CtrlMessage(MessageTypes.I_DO_NOT_VOTE_FOR_YOU, thisNode, retCode)
+                last_term_i_voted_for = incoming_term_number
             conn.send(serialize_message(retMsg))
 
         elif message.messageType == ControlMessageTypes.I_AM_LEADER:
@@ -153,7 +154,7 @@ def stabilization_routine():
     global acc_Table
     global drop_table
 
-    time.sleep(random.randint(1,10))
+    #time.sleep(random.randint(1,10))
     while 1:
         for i in acc_Table:
             message = send_ctrl_message_with_ACK(acc_Table, ControlMessageTypes.SYNC_NETWORK, 1,i,
@@ -169,7 +170,7 @@ def stabilization_routine():
                 print("Removed: ", i.IPAddr)
             #else:
             #    print(message.data)
-            time.sleep(random.randint(4,7))
+            time.sleep(random.randint(1,2))
 
 def start_leader_election():
     global thisNode
@@ -191,6 +192,7 @@ def start_leader_election():
                                          DEFAULT_TIMEOUT * 4)
         if (message.messageType == MessageTypes.ELECTION_ALREADY_RUNNING):
             state = ServerStates.FOLLOWER
+            print("Election already running")
             return
 
     term_number = term_number + 1
@@ -207,9 +209,14 @@ def start_leader_election():
                 print("------I am the leader for term ",term_number,"------")
                 break
 
-    for i in acc_Table:
-        message = send_ctrl_message_with_ACK(thisNode, ControlMessageTypes.I_AM_LEADER, term_number, i,
+    if(state == ServerStates.LEADER):
+        for i in acc_Table:
+            message = send_ctrl_message_with_ACK(thisNode, ControlMessageTypes.I_AM_LEADER, term_number, i,
                                              DEFAULT_TIMEOUT * 4)
+    else:
+        print("You cannot become leader")
+        state = ServerStates.FOLLOWER
+
     voting_lock.release()
 
 def display_state_of_server():
