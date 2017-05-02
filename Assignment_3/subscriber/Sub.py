@@ -26,8 +26,8 @@ if len(sys.argv) != 4:
     sys.exit()
 
 ip_and_port = sys.argv[1]
-topic = sys.argv[2]
-es_node_ip = "tcp://" + sys.argv[3] + ":5556"
+es_node_ip = "tcp://" + sys.argv[2] + ":5556"
+topic = sys.argv[3]
 
 print("\t YOUR IP: " + ip_and_port)
 print("\t KNOWN EVENT SERVICE IP: " + es_node_ip)

@@ -32,7 +32,14 @@ class TopicInfo:
             self.publishers.pop(ip)
 
     def getPublishers(self):
-        return self.publishers
+        for i in self.publishers.keys():
+            print("------------------------")
+            print("Pub IP: ", i)
+            print("Pub Strength: ", self.publishers[i])
+            print("------------------------")
+        #return self.publishers
+        #return ""
+        return
 
     def addSubscriber(self,ip):
         self.sub_list.append(ip)
@@ -94,11 +101,13 @@ class TopicDb:
     def printTopics(self):
         for topic,topicInfo in self.topics.iteritems():
             print "Topic: " + topic
-            print "Publishers: " + str(topicInfo.getPublishers())
+            #print "Publishers: " + str(topicInfo.getPublishers())
+            topicInfo.getPublishers()
+            #print "Ownership Strength: " + str(topicInfo.getOwner())
             print "Subscribers: " + str(topicInfo.getSubscribers())
-            print "Ownership Strength: " + str(topicInfo.getOwner())
-            print "History: " + str(topicInfo.printHistory())
-            print "Publisher status: " + str(topicInfo.get_all_pub_status())
+            print "Sliding window: " + str(topicInfo.printHistory())
+
+            #print "Publisher status: " + str(topicInfo.get_all_pub_status())
 
 
     def clean_up_expired_publishers(self):
