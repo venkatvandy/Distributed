@@ -1,0 +1,33 @@
+Publishers register themselves to the EventService with their IP addresses and their topics
+
+
+Subscribers register themselves to the EventService with their preference of topics
+
+https://github.com/ianwcarlson/python-zeromq-pubsub
+
+
+https://zeroc.com/products/ice/services/icestorm
+
+https://github.com/zeroc-ice/ice-demos/tree/master/python/IceStorm/
+
+
+topic1 3 topic1 3
+topic1 3 topic1 10
+topic2 5 topic1 3
+topic2 5 topic2 5
+topic2 5 topic1 10
+topic2 5 topic2 2
+topic3 2 topic1 3
+topic3 2 topic2 5
+topic3 2 topic3 2
+topic3 2 topic1 10
+topic3 2 topic2 2
+topic1 10 topic1 3
+topic1 10 topic2 5
+topic1 10 topic3 2
+topic1 10 topic1 10
+topic2 2 topic1 3
+topic2 2 topic2 5
+topic2 2 topic1 10
+topic2 2 topic2 2
+{'topic1': '10.0.0.2', 'topic2': '10.0.0.2', 'topic3': '10.0.0.1'}

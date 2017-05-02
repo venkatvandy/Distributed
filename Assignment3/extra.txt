@@ -1,0 +1,54 @@
+…or create a new repository on the command line
+
+echo "# Distributed" >> README.md
+git init
+git add README.md
+git commit -m "first commit"
+git remote add origin https://github.com/venkatvandy/Distributed.git
+git push -u origin master
+…or push an existing repository from the command line
+
+git remote add origin https://github.com/venkatvandy/Distributed.git
+git push -u origin master
+
+
+	if len(ownership_strength_table.keys()) != 1:
+        for ip, table in ownership_strength_table.items():
+            for topic, own_str in table.items():
+                for ip2, table2 in ownership_strength_table.items():
+                    for topic2, own_str2 in table2.items():
+                        #print(topic, own_str, topic2, own_str2)
+                        if (topic2 == topic and own_str2 > own_str):
+                            pub_lock.acquire()
+                            pub_dict[topic2] = ip2
+                            pub_lock.release()
+                            break
+                        elif (topic2 == topic and own_str2 < own_str):
+                            pub_lock.acquire()
+                            pub_dict[topic2] = ip
+                            pub_lock.release()
+                            break
+    else:
+        for ip, table in ownership_strength_table.items():
+            for topic, own_str in table.items():
+                pub_lock.acquire()
+                pub_dict[topic] = ip
+                pub_lock.release()
+
+1: 		10: '10.0.0.1'
+		14: '10.0.0.3'
+		
+2: 		9: '10.0.0.1'
+
+3: 		8: '10.0.0.1'
+		9: '10.0.0.2'
+		10: '10.0.0.3'
+		
+4: 		7: '10.0.0.1'
+		6: '10.0.0.2' 
+		
+5: 		11: '10.0.0.2'
+		9: '10.0.0.3'
+		
+6: 		12: '10.0.0.2'
+		3: '10.0.0.3'
