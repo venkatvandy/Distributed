@@ -8,7 +8,6 @@ import copy
 from optparse import OptionParser
 import random
 
-
 class Node():
     ID = 0
     IPAddr = "localhost"
@@ -27,6 +26,7 @@ thisNode.IPAddr = "localhost"
 thisNode.ctrlPort = 7228
 thisNode.relayPort = 7229
 
+
 currentleaderNode = Node()
 log = []
 current_index=0
@@ -37,6 +37,8 @@ cluster_count=0
 term_number = 0
 last_term_i_voted_for = 0
 voting_lock = Lock()
+seconds = 30
+
 
 def handle_ctrl_connection(conn, addr):
     global thisNode
@@ -87,6 +89,8 @@ def handle_ctrl_connection(conn, addr):
             currentleaderNode = message.data
             #term_number = int(message.extra)
             state =  ServerStates.FOLLOWER
+
+
             print("---------------------The leader for term ",term_number," is:",message.data.IPAddr,"------------------------")
 
         elif message.messageType == ControlMessageTypes.REPLICATE_LOG:
@@ -145,6 +149,14 @@ def handle_ctrl_connection(conn, addr):
 
             retMsg = CtrlMessage(MessageTypes.MSG_ACK, thisNode, retCode)
             conn.send(serialize_message(retMsg))
+
+        elif message.messageType == ControlMessageTypes.HEARTBEAT:
+            retCode = 0
+            global seconds
+            seconds = 30
+            retMsg = CtrlMessage(MessageTypes.MSG_ACK, thisNode, retCode)
+            conn.send(serialize_message(retMsg))
+
 
 def join_network(someNode):
     global thisNode
@@ -230,6 +242,17 @@ def start_leader_election():
 
     voting_lock.release()
 
+def heartbeat_routine():
+    global state
+
+    while 1:
+        if (state == ServerStates.LEADER):
+            for server in acc_Table:
+                message = send_ctrl_message_with_ACK(thisNode, ControlMessageTypes.HEARTBEAT, term_number, server,
+                                                 DEFAULT_TIMEOUT * 4)
+        time.sleep(10)
+
+
 def display_state_of_server():
     global state
 
@@ -241,6 +264,18 @@ def display_state_of_server():
         else:
             print("My state is : Candidate")
         time.sleep(5)
+
+def leader_timeout_routine():
+    global seconds
+    while 1:
+        if state == ServerStates.FOLLOWER:
+            while (seconds!=-1):
+                time.sleep(1);
+                seconds -= 1;
+
+            # Leader timed out, start leader election by announcing youself as candidate
+            start_leader_election()
+
 
 
 def main():
@@ -290,9 +325,17 @@ def main():
     stabilizer.daemon = True
     stabilizer.start()
 
+    stabilizer = Thread(target=heartbeat_routine)
+    stabilizer.daemon = True
+    stabilizer.start()
+
     display_State_Routine = Thread(target=display_state_of_server)
     display_State_Routine.daemon = True
     display_State_Routine.start()
+
+    leader_timeout = Thread(target=leader_timeout_routine)
+    leader_timeout.daemon = True
+    leader_timeout.start()
 
     # Wait forever
     while 1:

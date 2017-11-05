@@ -96,7 +96,7 @@ def register_with_successor(myIPaddress,topic,own_strength):
         data = conn.recv(MAX_REC_SIZE)
         print("***********4")
         data = unserialize_message(data)
-        print("*************Response to topic addition:", data.data)
+            print("*************Response to topic addition:", data.data)
 
     finally:
         conn.shutdown(1)
