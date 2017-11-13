@@ -37,7 +37,7 @@ cluster_count=0
 term_number = 0
 last_term_i_voted_for = 0
 voting_lock = Lock()
-seconds = 30
+seconds = 10
 
 
 def handle_ctrl_connection(conn, addr):
@@ -153,7 +153,7 @@ def handle_ctrl_connection(conn, addr):
         elif message.messageType == ControlMessageTypes.HEARTBEAT:
             retCode = 0
             global seconds
-            seconds = 30
+            seconds = 10
             retMsg = CtrlMessage(MessageTypes.MSG_ACK, thisNode, retCode)
             conn.send(serialize_message(retMsg))
 
@@ -204,6 +204,11 @@ def start_leader_election():
 
     voting_lock.acquire()
 
+    if len(acc_Table)<=0:
+        print("Just 1 server yet. No election possible.")
+        voting_lock.release()
+        return
+
     state = ServerStates.CANDIDATE
     cluster_count = len(acc_Table)+1
     print("--------Total servers in cluster:",cluster_count,"-------")
@@ -250,7 +255,7 @@ def heartbeat_routine():
             for server in acc_Table:
                 message = send_ctrl_message_with_ACK(thisNode, ControlMessageTypes.HEARTBEAT, term_number, server,
                                                  DEFAULT_TIMEOUT * 4)
-        time.sleep(10)
+        time.sleep(5)
 
 
 def display_state_of_server():
@@ -269,12 +274,15 @@ def leader_timeout_routine():
     global seconds
     while 1:
         if state == ServerStates.FOLLOWER:
-            while (seconds!=-1):
+            if (seconds > -1):
+                print("\nSeconds: "+str(seconds))
                 time.sleep(1);
                 seconds -= 1;
 
-            # Leader timed out, start leader election by announcing youself as candidate
-            start_leader_election()
+            else:
+                # Leader timed out, start leader election by announcing yourself as candidate
+                seconds = 10
+                start_leader_election()
 
 
 
@@ -341,7 +349,7 @@ def main():
     while 1:
         # The threads should never die
         listenCtrlThread.join(1)
-        print("\nOptions:\n")
+        '''print("\nOptions:\n")
         print("Press 1 to start leader election\n")
         print("Press 2 to print log status\n")
 
@@ -350,12 +358,13 @@ def main():
         if (j == "1"):
             start_leader_election()
 
+
         elif j=="2" :
             for i in log:
                 print(i)
 
         else:
-            print("Incorrect Input")
+            print("Incorrect Input")'''
 
     return 0
 
