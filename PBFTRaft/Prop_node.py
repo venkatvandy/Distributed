@@ -38,6 +38,7 @@ term_number = 0
 last_term_i_voted_for = 0
 voting_lock = Lock()
 seconds = 10
+quorum = []
 
 
 def handle_ctrl_connection(conn, addr):
@@ -154,6 +155,7 @@ def handle_ctrl_connection(conn, addr):
             retCode = 0
             global seconds
             seconds = 10
+            currentleaderNode = message.data
             retMsg = CtrlMessage(MessageTypes.MSG_ACK, thisNode, retCode)
             conn.send(serialize_message(retMsg))
 
@@ -201,6 +203,7 @@ def start_leader_election():
     global currentleaderNode
     global state
     global voting_lock
+    global quorum
 
     voting_lock.acquire()
 
@@ -231,6 +234,7 @@ def start_leader_election():
 
         if(message.messageType == MessageTypes.I_VOTE_FOR_YOU):
             count=count+1
+            quorum.append(message.data.IPAddr)
             if(count>cluster_count/2):
                 state = ServerStates.LEADER
                 currentleaderNode=thisNode
@@ -255,12 +259,16 @@ def heartbeat_routine():
             for server in acc_Table:
                 message = send_ctrl_message_with_ACK(thisNode, ControlMessageTypes.HEARTBEAT, term_number, server,
                                                  DEFAULT_TIMEOUT * 4)
+        #good value
         time.sleep(5)
+
+        #bad value
+        #time.sleep(13)
 
 
 def display_state_of_server():
     global state
-
+    global currentleaderNode
     while 1:
         if(state == ServerStates.FOLLOWER):
             print("My state is : Follower")
@@ -268,6 +276,10 @@ def display_state_of_server():
             print("My state is : Leader")
         else:
             print("My state is : Candidate")
+
+        if state==ServerStates.FOLLOWER:
+            print("My Leader is :"+ currentleaderNode.IPAddr)
+
         time.sleep(5)
 
 def leader_timeout_routine():
@@ -275,7 +287,7 @@ def leader_timeout_routine():
     while 1:
         if state == ServerStates.FOLLOWER:
             if (seconds > -1):
-                print("\nSeconds: "+str(seconds))
+                #print("\nSeconds: "+str(seconds))
                 time.sleep(1);
                 seconds -= 1;
 
