@@ -27,7 +27,8 @@ thisNode.ctrlPort = 7228
 thisNode.relayPort = 7229
 
 
-currentleaderNode = Node()
+#currentleaderNode = Node()
+currentleaderNode = None
 log = []
 current_index=0
 acc_Table = []
@@ -87,12 +88,33 @@ def handle_ctrl_connection(conn, addr):
             conn.send(serialize_message(retMsg))
 
         elif message.messageType == ControlMessageTypes.I_AM_LEADER:
-            currentleaderNode = message.data
-            #term_number = int(message.extra)
-            state =  ServerStates.FOLLOWER
+            retCode = 0
+            flag=0
+            quorum_temp = message.extra
+            print("Quorum temp is: ", quorum_temp)
+            IP_addr_list = []
+
+            for each_node in acc_Table:
+                IP_addr_list.append(each_node.IPAddr)
+
+            print("Acc_table IP addresses : ", IP_addr_list)
+
+            for each_voter in quorum_temp:
+                if each_voter not in IP_addr_list and each_voter!= thisNode.IPAddr :
+                    print("Vote Not Valid")
+                    flag=1
+                    retMsg = CtrlMessage(MessageTypes.REJECT_NEW_LEADER, thisNode, retCode)
+                    conn.send(serialize_message(retMsg))
+                    break
 
 
-            print("---------------------The leader for term ",term_number," is:",message.data.IPAddr,"------------------------")
+            if flag ==0:
+                currentleaderNode = message.data
+                # term_number = int(message.extra)
+                state = ServerStates.FOLLOWER
+                print("---------------------The leader for term ",term_number," is:",message.data.IPAddr,"------------------------")
+                retMsg = CtrlMessage(MessageTypes.ACCEPT_NEW_LEADER, thisNode, retCode)
+                conn.send(serialize_message(retMsg))
 
         elif message.messageType == ControlMessageTypes.REPLICATE_LOG:
             retCode = 0
@@ -207,8 +229,10 @@ def start_leader_election():
 
     voting_lock.acquire()
 
-    if len(acc_Table)<=0:
-        print("Just 1 server yet. No election possible.")
+
+    if len(acc_Table)<=2:
+        print("JNot enough servers yet for PBFT raft.")
+        currentleaderNode = None
         voting_lock.release()
         return
 
@@ -228,7 +252,7 @@ def start_leader_election():
 
     term_number = term_number + 1
 
-    for server in acc_Table:
+    '''for server in acc_Table:
         message = send_ctrl_message_with_ACK(thisNode, ControlMessageTypes.ASK_FOR_VOTE, term_number, server,
                                          DEFAULT_TIMEOUT * 4)
 
@@ -243,8 +267,50 @@ def start_leader_election():
 
     if(state == ServerStates.LEADER):
         for i in acc_Table:
-            message = send_ctrl_message_with_ACK(thisNode, ControlMessageTypes.I_AM_LEADER, term_number, i,
+            #message = send_ctrl_message_with_ACK(thisNode, ControlMessageTypes.I_AM_LEADER, term_number, i,DEFAULT_TIMEOUT * 4)
+            message = send_ctrl_message_with_ACK(thisNode, ControlMessageTypes.I_AM_LEADER, quorum, i,DEFAULT_TIMEOUT * 4)
+            if message.messageType == MessageTypes.REJECT_NEW_LEADER :
+                state = ServerStates.FOLLOWER
+                currentleaderNode = None
+                print("------Other nodes rejected my leadership in term ", term_number, "------")
+    else:
+        print("You cannot become leader")
+        state = ServerStates.FOLLOWER'''
+
+    quorum = []
+    for server in acc_Table:
+        message = send_ctrl_message_with_ACK(thisNode, ControlMessageTypes.ASK_FOR_VOTE, term_number, server,
                                              DEFAULT_TIMEOUT * 4)
+
+        if (message.messageType == MessageTypes.I_VOTE_FOR_YOU):
+            count = count + 1
+            quorum.append(message.data.IPAddr)
+            if (count > cluster_count / 2):
+                #state = ServerStates.LEADER
+                #currentleaderNode = thisNode
+                #print("------I am the leader for term ", term_number, "------")
+                print("Quorum is: ", quorum)
+                break
+
+    flag= 0
+    #if (state == ServerStates.LEADER):
+    if (count > cluster_count / 2):
+        for i in acc_Table:
+            # message = send_ctrl_message_with_ACK(thisNode, ControlMessageTypes.I_AM_LEADER, term_number, i,DEFAULT_TIMEOUT * 4)
+            message = send_ctrl_message_with_ACK(thisNode, ControlMessageTypes.I_AM_LEADER, quorum, i,
+                                                 DEFAULT_TIMEOUT * 4)
+            if message.messageType == MessageTypes.REJECT_NEW_LEADER:
+                state = ServerStates.FOLLOWER
+                currentleaderNode = None
+                print("------Other nodes rejected my leadership in term ", term_number, "------")
+                flag = 1
+                break
+
+        if flag ==0:
+            state = ServerStates.LEADER
+            currentleaderNode = thisNode
+            print("------I am the leader for term ", term_number, "------")
+
     else:
         print("You cannot become leader")
         state = ServerStates.FOLLOWER
@@ -278,7 +344,12 @@ def display_state_of_server():
             print("My state is : Candidate")
 
         if state==ServerStates.FOLLOWER:
-            print("My Leader is :"+ currentleaderNode.IPAddr)
+            if currentleaderNode != None:
+                print("My Leader is :"+ currentleaderNode.IPAddr)
+
+        if len(acc_Table)<=2:
+            state = ServerStates.FOLLOWER
+            currentleaderNode = None
 
         time.sleep(5)
 
@@ -287,7 +358,7 @@ def leader_timeout_routine():
     while 1:
         if state == ServerStates.FOLLOWER:
             if (seconds > -1):
-                #print("\nSeconds: "+str(seconds))
+                print("\nSeconds: "+str(seconds))
                 time.sleep(1);
                 seconds -= 1;
 

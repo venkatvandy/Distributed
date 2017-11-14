@@ -17,6 +17,7 @@ class ControlMessageTypes():
     UPDATE_YOUR_TERM_NUMBER_FROM_CURRENT_LEADER = 23
     HEARTBEAT = 25
 
+
 class MessageTypes():
     MSG_ACK = 10
     PING = 11
@@ -27,6 +28,8 @@ class MessageTypes():
     LOG_RECORDED = 21
     I_AM_BEHIND = 22
     UPDATED_MY_TERM = 24
+    REJECT_NEW_LEADER = 26
+    ACCEPT_NEW_LEADER = 27
 
 class ServerStates():
     CANDIDATE = 15
