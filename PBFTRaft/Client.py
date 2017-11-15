@@ -21,8 +21,34 @@ class Node():
             return True
         return False
 
-def main():
+seconds = 4
+request_sent = 0
 
+def client_request_timeout(knownNode):
+    global seconds
+    global request_sent
+    while 1:
+        if(request_sent==1):
+            if (seconds > -1):
+                print("\nSeconds: "+str(seconds))
+                time.sleep(1);
+                seconds -= 1;
+            else:
+                # PBFT Raft timed out, start leader election by client intervention
+                seconds = 4
+                request_sent = 0
+                while 1:
+                    if request_sent==1:
+                        request_sent = 0
+                        message = send_ctrl_message_with_ACK("blah", ControlMessageTypes.CLIENT_INTERVENTION, 0, knownNode,DEFAULT_TIMEOUT * 4)
+                        break
+
+                if message.MessageTypes == MessageTypes.NEW_LEADER_ELECTED:
+                    print("New leader elected")
+
+def main():
+    global seconds
+    global request_sent
     parser = OptionParser(usage="usage: %prog [options] filename",
                           version="%prog 1.0")
     parser.add_option("-e", "--existingnode",
@@ -49,13 +75,29 @@ def main():
         tmpNode = Node()
         tmpNode.IPAddr = options.existingnode
 
+    client_timeout = Thread(target=client_request_timeout,args=(tmpNode,))
+    client_timeout.daemon = True
+    client_timeout.start()
 
-    print("Sending....")
-    message = send_ctrl_message_with_ACK("blah", ControlMessageTypes.ACCEPT_REQUEST_FROM_CLIENTS, 0 ,tmpNode ,DEFAULT_TIMEOUT * 4)
-    if message.messageType
-    print("Sent....")
 
-    #send_ping_message(tmpNode)
+
+    while 1:
+        j = raw_input("")
+        if j == "1":
+            request_sent = 1
+            print("Sending....")
+            message = send_ctrl_message_with_ACK("blah", ControlMessageTypes.ACCEPT_REQUEST_FROM_CLIENTS, 0 ,tmpNode ,DEFAULT_TIMEOUT * 4)
+            #print("Waiting for response....")
+            if message.messageType == MessageTypes.REPLY_TO_CLIENT:
+                if request_sent==0:
+                    print("Response late. Discarding the response from server.")
+                    request_sent=1
+                else:
+                    print("Your command got executed in time.")
+                request_sent = 0
+                seconds = 4
+
+
 
 
 if __name__ == "__main__":

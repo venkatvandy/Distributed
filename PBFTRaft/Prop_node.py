@@ -14,11 +14,11 @@ class Node():
     ctrlPort = 7228
     relayPort = 7229
 
-    def __eq__(self, other):
+    '''def __eq__(self, other):
         if (self.ID == other.ID and self.IPAddr == other.IPAddr and self.ctrlPort
             == other.ctrlPort and self.relayPort == other.relayPort):
             return True
-        return False
+        return False'''
 
 thisNode = Node()
 thisNode.ID = 0
@@ -52,6 +52,7 @@ def handle_ctrl_connection(conn, addr):
     global term_number
     global current_index
     global state
+    global seconds
 
     data = conn.recv(MAX_REC_SIZE)
     conn.settimeout(DEFAULT_TIMEOUT)
@@ -145,6 +146,14 @@ def handle_ctrl_connection(conn, addr):
 
         elif message.messageType == ControlMessageTypes.ACCEPT_REQUEST_FROM_CLIENTS:
             if (state == ServerStates.LEADER):
+                retCode = 0
+                time.sleep(8)
+
+                if currentleaderNode==None:
+                    retMsg = CtrlMessage(MessageTypes.REPLY_TO_CLIENT, current_index, retCode)
+                    conn.send(serialize_message(retMsg))
+                    return
+
                 #log[current_index]= term_number
                 log.append(term_number)
                 print("Log recorded: ",log[current_index])
@@ -158,10 +167,18 @@ def handle_ctrl_connection(conn, addr):
                         send_ctrl_message_with_ACK(term_number, ControlMessageTypes.UPDATE_YOUR_TERM_NUMBER_FROM_CURRENT_LEADER, i,
                                                    servers, DEFAULT_TIMEOUT * 4)
                 current_index = current_index + 1
+                retMsg = CtrlMessage(MessageTypes.REPLY_TO_CLIENT, current_index, retCode)
+                conn.send(serialize_message(retMsg))
 
             else:
-                send_ctrl_message_with_ACK(message.data, ControlMessageTypes.ACCEPT_REQUEST_FROM_CLIENTS,0 , currentleaderNode,
+                if currentleaderNode != None:
+                    retCode = 0
+                    msg = send_ctrl_message_with_ACK(message.data, ControlMessageTypes.ACCEPT_REQUEST_FROM_CLIENTS,0 , currentleaderNode,
                                                      DEFAULT_TIMEOUT * 4)
+
+                    if msg.messageType == MessageTypes.REPLY_TO_CLIENT:
+                        retMsg = CtrlMessage(MessageTypes.REPLY_TO_CLIENT, current_index, retCode)
+                        conn.send(serialize_message(retMsg))
 
 
         elif message.messageType == ControlMessageTypes.SYNC_NETWORK:
@@ -187,6 +204,32 @@ def handle_ctrl_connection(conn, addr):
             currentleaderNode = message.data
             retMsg = CtrlMessage(MessageTypes.MSG_ACK, thisNode, retCode)
             conn.send(serialize_message(retMsg))
+
+        elif message.messageType == ControlMessageTypes.CLIENT_INTERVENTION:
+            retCode = 0
+            state = ServerStates.FOLLOWER
+            seconds = 10
+            currentleaderNode = None
+            for servers in acc_Table:
+                msg = send_ctrl_message_with_ACK(term_number, ControlMessageTypes.CLIENT_INTERVENTION_RECEIVED, current_index, servers,
+                                                 DEFAULT_TIMEOUT * 4)
+
+            while(1):
+                #Wait till new election gives a new leader
+                if currentleaderNode == None:
+                    time.sleep(2)
+                else:
+                    break
+
+            retMsg = CtrlMessage(MessageTypes.NEW_LEADER_ELECTED, thisNode, retCode)
+            conn.send(serialize_message(retMsg))
+            #start_leader_election()
+
+        elif message.messageType == ControlMessageTypes.CLIENT_INTERVENTION_RECEIVED:
+            state = ServerStates.FOLLOWER
+            currentleaderNode = None
+            seconds = 10
+
 
 
 def join_network(someNode):
@@ -224,7 +267,7 @@ def stabilization_routine():
                 print("Removed: ", i.IPAddr)
             #else:
             #    print(message.data)
-            time.sleep(random.randint(1,2))
+            #time.sleep(random.randint(1,2))
 
 def start_leader_election():
     global thisNode
@@ -375,12 +418,13 @@ def leader_timeout_routine():
     while 1:
         if state == ServerStates.FOLLOWER or state == ServerStates.CANDIDATE:
             if (seconds > -1):
-                print("\nSeconds: "+str(seconds))
+                #print("\nSeconds: "+str(seconds))
                 time.sleep(1);
                 seconds -= 1;
 
             else:
                 # Leader timed out, start leader election by announcing yourself as candidate
+                print("Timed Out")
                 seconds = 10
                 #seconds = random.randint(10, 20)
                 start_leader_election()
@@ -452,20 +496,20 @@ def main():
         listenCtrlThread.join(1)
         '''print("\nOptions:\n")
         print("Press 1 to start leader election\n")
-        print("Press 2 to print log status\n")
+        print("Press 2 to print log status\n")'''
 
         j = input("")
 
-        if (j == "1"):
-            start_leader_election()
+        #if (j == "1"):
+        #    start_leader_election()
 
 
-        elif j=="2" :
+        if j=="2" :
             for i in log:
                 print(i)
 
         else:
-            print("Incorrect Input")'''
+            print("Incorrect Input")
 
     return 0
 

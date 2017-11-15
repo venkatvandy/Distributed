@@ -1,4 +1,17 @@
 import sys
+import time
+
+'''start_time = time.time()
+time.sleep(5)
+elapsed_time = time.time() - start_time
+
+print(elapsed_time)
+
+a = None
+
+while(a==None):
+    print("venki")'''
+
 
 #a = "0123456"
 
@@ -23,7 +36,7 @@ x[(2,3)] = 11
 
 print(x[(1,2)])'''
 
-quorum = ["venki","venki1","venki2","venkqewq"]
+'''quorum = ["venki","venki1","venki2","venkqewq"]
 
 print(quorum)
 
@@ -34,7 +47,22 @@ acc_table = ["venki","venki1","venki2","venki3","venki4","venki5","venki6"]
 
 
 #print("asdasf: " ,acc_table)
-'''for s in quorum:
+for s in quorum:
     if s not in acc_table:
         print(s)'''
+
+'''j = raw_input("")
+if j=="1":
+    print("blah")'''
+
+
+a= 1
+
+while 1:
+    if a==None:
+        print("blah")
+    else:
+        break
+
+print("veleril")
 
