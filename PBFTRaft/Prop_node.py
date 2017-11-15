@@ -39,6 +39,7 @@ term_number = 0
 last_term_i_voted_for = 0
 voting_lock = Lock()
 seconds = 10
+#seconds = random.randint(10,20)
 quorum = []
 
 
@@ -78,14 +79,19 @@ def handle_ctrl_connection(conn, addr):
 
         elif message.messageType == ControlMessageTypes.ASK_FOR_VOTE:
             retCode = 0
-            incoming_term_number  = int(message.extra)
-            if incoming_term_number < term_number:
-                    retMsg = CtrlMessage(MessageTypes.I_DO_NOT_VOTE_FOR_YOU, thisNode, retCode)
+            if len(acc_Table)<=2:
+                retMsg = CtrlMessage(MessageTypes.NOT_ENOUGH_NODES_IN_THE_SYSTEM, thisNode, retCode)
+                conn.send(serialize_message(retMsg))
             else:
-                print("Voting for term ",message.extra)
-                retMsg = CtrlMessage(MessageTypes.I_VOTE_FOR_YOU, thisNode, retCode)
-                last_term_i_voted_for = incoming_term_number
-            conn.send(serialize_message(retMsg))
+                incoming_term_number  = int(message.extra)
+                if incoming_term_number < term_number:
+                        retMsg = CtrlMessage(MessageTypes.I_DO_NOT_VOTE_FOR_YOU, thisNode, retCode)
+                else:
+                    print("Voting for term ",message.extra)
+                    retMsg = CtrlMessage(MessageTypes.I_VOTE_FOR_YOU, thisNode, retCode)
+                    last_term_i_voted_for = incoming_term_number
+
+                conn.send(serialize_message(retMsg))
 
         elif message.messageType == ControlMessageTypes.I_AM_LEADER:
             retCode = 0
@@ -177,6 +183,7 @@ def handle_ctrl_connection(conn, addr):
             retCode = 0
             global seconds
             seconds = 10
+            #seconds = random.randint(10, 20)
             currentleaderNode = message.data
             retMsg = CtrlMessage(MessageTypes.MSG_ACK, thisNode, retCode)
             conn.send(serialize_message(retMsg))
@@ -227,14 +234,16 @@ def start_leader_election():
     global voting_lock
     global quorum
 
-    voting_lock.acquire()
+    #voting_lock.acquire()
 
 
     if len(acc_Table)<=2:
-        print("JNot enough servers yet for PBFT raft.")
+        print("Not enough servers yet for PBFT raft.")
         currentleaderNode = None
-        voting_lock.release()
+        #voting_lock.release()
         return
+
+    voting_lock.acquire()
 
     state = ServerStates.CANDIDATE
     cluster_count = len(acc_Table)+1
@@ -248,6 +257,7 @@ def start_leader_election():
         if (message.messageType == MessageTypes.ELECTION_ALREADY_RUNNING):
             state = ServerStates.FOLLOWER
             print("Election already running")
+            voting_lock.release()
             return
 
     term_number = term_number + 1
@@ -291,6 +301,13 @@ def start_leader_election():
                 #print("------I am the leader for term ", term_number, "------")
                 print("Quorum is: ", quorum)
                 break
+
+        if (message.messageType == MessageTypes.NOT_ENOUGH_NODES_IN_THE_SYSTEM):
+            print("Not enough servers yet for PBFT raft.")
+            state = ServerStates.FOLLOWER
+            currentleaderNode = None
+            voting_lock.release()
+            return
 
     flag= 0
     #if (state == ServerStates.LEADER):
@@ -356,7 +373,7 @@ def display_state_of_server():
 def leader_timeout_routine():
     global seconds
     while 1:
-        if state == ServerStates.FOLLOWER:
+        if state == ServerStates.FOLLOWER or state == ServerStates.CANDIDATE:
             if (seconds > -1):
                 print("\nSeconds: "+str(seconds))
                 time.sleep(1);
@@ -365,6 +382,7 @@ def leader_timeout_routine():
             else:
                 # Leader timed out, start leader election by announcing yourself as candidate
                 seconds = 10
+                #seconds = random.randint(10, 20)
                 start_leader_election()
 
 

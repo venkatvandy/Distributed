@@ -30,6 +30,7 @@ class MessageTypes():
     UPDATED_MY_TERM = 24
     REJECT_NEW_LEADER = 26
     ACCEPT_NEW_LEADER = 27
+    NOT_ENOUGH_NODES_IN_THE_SYSTEM = 28
 
 class ServerStates():
     CANDIDATE = 15

@@ -52,6 +52,7 @@ def main():
 
     print("Sending....")
     message = send_ctrl_message_with_ACK("blah", ControlMessageTypes.ACCEPT_REQUEST_FROM_CLIENTS, 0 ,tmpNode ,DEFAULT_TIMEOUT * 4)
+    if message.messageType
     print("Sent....")
 
     #send_ping_message(tmpNode)
