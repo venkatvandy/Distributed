@@ -118,6 +118,9 @@ def handle_ctrl_connection(conn, addr):
 
 
             if flag ==0:
+                # added as experiment
+                seconds = 10
+
                 currentleaderNode = message.data
                 # term_number = int(message.extra)
                 state = ServerStates.FOLLOWER
@@ -200,7 +203,6 @@ def handle_ctrl_connection(conn, addr):
 
         elif message.messageType == ControlMessageTypes.HEARTBEAT:
             retCode = 0
-            global seconds
             seconds = 10
             #seconds = random.randint(10, 20)
             currentleaderNode = message.data
@@ -222,16 +224,19 @@ def handle_ctrl_connection(conn, addr):
                 if currentleaderNode == None:
                     time.sleep(2)
                 else:
+                    print("Old Leader: "+ oldleaderNode.IPAddr)
+                    print("New Leader: " + currentleaderNode.IPAddr)
                     if currentleaderNode.IPAddr == oldleaderNode.IPAddr:
                         currentleaderNode = None
+                        seconds = 10
+                        print("Same leader elected again. Start Election again")
                         for servers in acc_Table:
-                            msg = send_ctrl_message_with_ACK(term_number,
-                                                             ControlMessageTypes.CLIENT_INTERVENTION_RECEIVED,
-                                                             current_index, servers,
+                            msg = send_ctrl_message_with_ACK(term_number,ControlMessageTypes.CLIENT_INTERVENTION_RECEIVED,current_index, servers,
                                                              DEFAULT_TIMEOUT * 4)
 
                     else:
                         print("********&&&&&&^%$#$%^&*(*&^%$%^&*(*&^New Leader Elected^&*)(*&^%$$%^&*(*&^%$#$%^&*(*&^%$#$%^&*(")
+
                         break
 
             retMsg = CtrlMessage(MessageTypes.NEW_LEADER_ELECTED, currentleaderNode, retCode)
@@ -433,6 +438,7 @@ def display_state_of_server():
 def leader_timeout_routine():
     global seconds
     while 1:
+        #if (state == ServerStates.FOLLOWER and currentleaderNode!=None) or (state == ServerStates.CANDIDATE and currentleaderNode!=None):
         if state == ServerStates.FOLLOWER or state == ServerStates.CANDIDATE:
             if (seconds > -1):
                 #print("\nSeconds: "+str(seconds))

@@ -45,8 +45,8 @@
       <file leaf-file-name="Prop_node.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/Prop_node.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="3156">
-              <caret line="356" column="45" lean-forward="false" selection-start-line="356" selection-start-column="26" selection-end-line="356" selection-end-column="45" />
+            <state relative-caret-position="362">
+              <caret line="204" column="23" lean-forward="false" selection-start-line="204" selection-start-column="23" selection-end-line="204" selection-end-column="23" />
               <folding>
                 <element signature="e#0#26#0" expanded="true" />
               </folding>
@@ -69,7 +69,7 @@
       <file leaf-file-name="Client.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/Client.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="324">
+            <state relative-caret-position="444">
               <caret line="45" column="78" lean-forward="false" selection-start-line="45" selection-start-column="78" selection-end-line="45" selection-end-column="78" />
               <folding>
                 <element signature="e#0#26#0" expanded="true" />
@@ -99,9 +99,6 @@
   </component>
   <component name="FindInProjectRecents">
     <findStrings>
-      <find>return</find>
-      <find>bu hu</find>
-      <find>handle_ctrl_connection</find>
       <find>30</find>
       <find>32</find>
       <find>NEW_LEA</find>
@@ -123,12 +120,15 @@
       <find>==</find>
       <find>ACCEPT_REQUEST_FROM_CLIENTS</find>
       <find>REPLY_TO_CLIENT</find>
-      <find>currentleaderNode</find>
       <find>accept_reques</find>
       <find>CLIENT_INTERVENTION</find>
-      <find>DEFAULT_TIMEOUT</find>
-      <find>knownNode</find>
       <find>.data</find>
+      <find>knownNode</find>
+      <find>start_leader</find>
+      <find>heartbeat</find>
+      <find>start_leader_election</find>
+      <find>DEFAULT_TIMEOUT</find>
+      <find>currentleaderNode</find>
     </findStrings>
   </component>
   <component name="IdeDocumentHistory">
@@ -138,8 +138,8 @@
         <option value="$PROJECT_DIR$/test.py" />
         <option value="$PROJECT_DIR$/message_types.py" />
         <option value="$PROJECT_DIR$/test2.py" />
-        <option value="$PROJECT_DIR$/Prop_node.py" />
         <option value="$PROJECT_DIR$/Client.py" />
+        <option value="$PROJECT_DIR$/Prop_node.py" />
       </list>
     </option>
   </component>
@@ -472,7 +472,7 @@
     <servers />
   </component>
   <component name="ToolWindowManager">
-    <frame x="-9" y="-9" width="1938" height="1048" extended-state="6" />
+    <frame x="-9" y="-9" width="1938" height="1048" extended-state="7" />
     <editor active="true" />
     <layout>
       <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.15052083" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
@@ -907,14 +907,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/connection_test.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="0">
-          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/test2.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="548">
@@ -933,6 +925,24 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/connection_test.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="0">
+          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/Client.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="444">
+          <caret line="45" column="78" lean-forward="false" selection-start-line="45" selection-start-column="78" selection-end-line="45" selection-end-column="78" />
+          <folding>
+            <element signature="e#0#26#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/network_ctrl.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="358">
@@ -943,20 +953,10 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/Client.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="324">
-          <caret line="45" column="78" lean-forward="false" selection-start-line="45" selection-start-column="78" selection-end-line="45" selection-end-column="78" />
-          <folding>
-            <element signature="e#0#26#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/Prop_node.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="3156">
-          <caret line="356" column="45" lean-forward="false" selection-start-line="356" selection-start-column="26" selection-end-line="356" selection-end-column="45" />
+        <state relative-caret-position="362">
+          <caret line="204" column="23" lean-forward="false" selection-start-line="204" selection-start-column="23" selection-end-line="204" selection-end-column="23" />
           <folding>
             <element signature="e#0#26#0" expanded="true" />
           </folding>
