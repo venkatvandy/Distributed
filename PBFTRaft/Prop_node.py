@@ -29,6 +29,7 @@ thisNode.relayPort = 7229
 
 #currentleaderNode = Node()
 currentleaderNode = None
+oldleaderNode = None
 log = []
 current_index=0
 acc_Table = []
@@ -53,6 +54,7 @@ def handle_ctrl_connection(conn, addr):
     global current_index
     global state
     global seconds
+    global oldleaderNode
 
     data = conn.recv(MAX_REC_SIZE)
     conn.settimeout(DEFAULT_TIMEOUT)
@@ -209,6 +211,7 @@ def handle_ctrl_connection(conn, addr):
             retCode = 0
             state = ServerStates.FOLLOWER
             seconds = 10
+            oldleaderNode = currentleaderNode
             currentleaderNode = None
             for servers in acc_Table:
                 msg = send_ctrl_message_with_ACK(term_number, ControlMessageTypes.CLIENT_INTERVENTION_RECEIVED, current_index, servers,
@@ -219,16 +222,30 @@ def handle_ctrl_connection(conn, addr):
                 if currentleaderNode == None:
                     time.sleep(2)
                 else:
-                    break
+                    if currentleaderNode.IPAddr == oldleaderNode.IPAddr:
+                        currentleaderNode = None
+                        for servers in acc_Table:
+                            msg = send_ctrl_message_with_ACK(term_number,
+                                                             ControlMessageTypes.CLIENT_INTERVENTION_RECEIVED,
+                                                             current_index, servers,
+                                                             DEFAULT_TIMEOUT * 4)
 
-            retMsg = CtrlMessage(MessageTypes.NEW_LEADER_ELECTED, thisNode, retCode)
+                    else:
+                        print("********&&&&&&^%$#$%^&*(*&^%$%^&*(*&^New Leader Elected^&*)(*&^%$$%^&*(*&^%$#$%^&*(*&^%$#$%^&*(")
+                        break
+
+            retMsg = CtrlMessage(MessageTypes.NEW_LEADER_ELECTED, currentleaderNode, retCode)
             conn.send(serialize_message(retMsg))
             #start_leader_election()
 
         elif message.messageType == ControlMessageTypes.CLIENT_INTERVENTION_RECEIVED:
+            retCode = 0
             state = ServerStates.FOLLOWER
             currentleaderNode = None
             seconds = 10
+
+            retMsg = CtrlMessage(MessageTypes.NEW_LEADER_ELECTED, thisNode, retCode)
+            conn.send(serialize_message(retMsg))
 
 
 

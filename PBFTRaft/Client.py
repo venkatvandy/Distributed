@@ -37,14 +37,15 @@ def client_request_timeout(knownNode):
                 # PBFT Raft timed out, start leader election by client intervention
                 seconds = 4
                 request_sent = 0
+
                 while 1:
                     if request_sent==1:
                         request_sent = 0
                         message = send_ctrl_message_with_ACK("blah", ControlMessageTypes.CLIENT_INTERVENTION, 0, knownNode,DEFAULT_TIMEOUT * 4)
+                        if message.messageType == MessageTypes.NEW_LEADER_ELECTED:
+                            print("New leader elected: "+ message.data.IPAddr)
                         break
 
-                if message.MessageTypes == MessageTypes.NEW_LEADER_ELECTED:
-                    print("New leader elected")
 
 def main():
     global seconds
@@ -94,8 +95,8 @@ def main():
                     request_sent=1
                 else:
                     print("Your command got executed in time.")
-                request_sent = 0
-                seconds = 4
+                    request_sent = 0
+                    seconds = 4
 
 
 
