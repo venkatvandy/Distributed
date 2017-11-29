@@ -56,7 +56,7 @@ if j=="1":
     print("blah")'''
 
 
-a= 1
+'''a= 1
 
 while 1:
     if a==None:
@@ -64,5 +64,18 @@ while 1:
     else:
         break
 
-print("veleril")
+print("veleril")'''
+
+'''a = []
+a.insert(2,100)
+
+#print(a)
+print(a[0])'''
+
+cluster_count = 5
+
+b = 3
+
+if(b>cluster_count/2):
+    print("blah")
 
