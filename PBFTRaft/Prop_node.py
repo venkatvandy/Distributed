@@ -107,27 +107,40 @@ def handle_ctrl_connection(conn, addr):
             retCode = 0
             flag=0
             quorum_temp = message.extra
-            #print("Quorum temp is: ", quorum_temp)
-            existing_IP_addr_list = []
+            quorum_length = len(quorum_temp)
+            print("Quorum temp is: ", quorum_temp)
+            IP_addr_list = []
 
             for each_node in acc_Table:
-                existing_IP_addr_list.append(each_node.IPAddr)
+                IP_addr_list.append(each_node.IPAddr)
 
-            #->> Connected
-            existing_IP_addr_list.append(thisNode.IPAddr)
+            print("Acc_table IP addresses : ", IP_addr_list)
 
-            #print("Acc_table IP addresses : ", existing_IP_addr_list)
-
-            for each_voter_in_quorum in quorum_temp:
-                # ->> Connected
-                #if each_voter not in IP_addr_list and each_voter!= thisNode.IPAddr :
-                if each_voter_in_quorum not in existing_IP_addr_list:
+            for each_voter in quorum_temp:
+                if each_voter not in IP_addr_list and each_voter!= thisNode.IPAddr :
                     print("Vote Not Valid")
                     flag=1
                     retMsg = CtrlMessage(MessageTypes.REJECT_NEW_LEADER, thisNode, retCode)
                     conn.send(serialize_message(retMsg))
                     break
-
+                elif each_voter == thisNode.IPAddr:
+                    if last_node_i_voted_for != message.data.IPAddr:
+                        print("Vote Not Valid")
+                        flag=1
+                        retMsg = CtrlMessage(MessageTypes.REJECT_NEW_LEADER, thisNode, retCode)
+                        conn.send(serialize_message(retMsg))
+                        break
+                else:
+                    msg = send_ctrl_message_with_ACK(term_number, ControlMessageTypes.VERIFY_ELECTION,None,each_voter,DEFAULT_TIMEOUT * 4)
+                    if msg.messageType == ControlMessageTypes.CANT_VERIFY_VOTE:
+                        print(each_voter, "vote not valid")
+                        quorum_length -= 1
+                        if quorum_length <= cluster_count / 2:
+                            print("Vote Not Valid")
+                            flag=1
+                            retMsg = CtrlMessage(MessageTypes.REJECT_NEW_LEADER, thisNode, retCode)
+                            conn.send(serialize_message(retMsg))
+                            break
 
             if flag ==0:
                 # added as experiment
@@ -368,6 +381,15 @@ def handle_ctrl_connection(conn, addr):
 
             retMsg = CtrlMessage(MessageTypes.NEW_LEADER_ELECTED, thisNode, retCode)
             conn.send(serialize_message(retMsg))
+
+        elif message.messageType == ControlMessageTypes.VERIFY_ELECTION:
+            retCode = 0
+            if message.data == last_node_i_voted_for:
+                retMsg = CtrlMessage(MessageTypes.VERIFY_VOTE, thisNode, retCode)
+                conn.send(serialize_message(retMsg))
+            else:
+                retMsg = CtrlMessage(MessageTypes.CANT_VERIFY_VOTE, thisNode, retCode)
+                conn.send(serialize_message(retMsg))
 
 
 
