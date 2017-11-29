@@ -170,13 +170,21 @@ def handle_ctrl_connection(conn, addr):
 
             if flag == 0:
                 term_and_index_number = message.data
-                log_index = int(term_and_index_number[0])
-                log_value = int(term_and_index_number[1])
+                print("******Term_and_index_number: " ,len(term_and_index_number))
+                #log_index = int(term_and_index_number[0])
+                #log_value = int(term_and_index_number[1])
+                log_index = term_and_index_number[0]
+                log_value = term_and_index_number[1]
+                print("%%%%%My current index is: ",current_index)
+                print("%%%%%Received index from leader is : ", log_index)
                 #log_value = message.data
+                #print("*****Quorum satisfied*****")
                 if(current_index == log_index):
                     #log[current_index] = message.data
                     log.append(log_value)
-                    print("Log replicated: ", log[current_index])
+                    #print("Log replicated: ", log[current_index])
+
+                    print("Log replicated: ", log)
                     current_index = current_index +1
 
                     #Below commented code is for old Raft where we inform only the leader about the replicated log.
@@ -213,12 +221,19 @@ def handle_ctrl_connection(conn, addr):
             else:
                 commit_tracker[replicated_entry_index] = 1
 
-            if commit_tracker[replicated_entry_index] > cluster_count/2:
-                commit_index = replicated_entry_index
-                print("Entry committed at index : ", commit_index)
-                print("Current log is : ",log)
-
             commit_lock.release()
+
+            flag = 1
+            while flag==1:
+                commit_lock.acquire()
+                if commit_tracker[replicated_entry_index] > cluster_count/2 and len(log)>=replicated_entry_index+1:
+                    commit_index = replicated_entry_index
+                    print("Entry committed at index : ", commit_index)
+                    print("Current log is : ",log)
+                    flag=0
+                commit_lock.release()
+
+
 
 
         elif message.messageType == ControlMessageTypes.UPDATE_YOUR_TERM_NUMBER_FROM_CURRENT_LEADER:
@@ -253,9 +268,14 @@ def handle_ctrl_connection(conn, addr):
                     msg = send_ctrl_message_with_ACK(term_and_index_number, ControlMessageTypes.REPLICATE_LOG,quorum,servers,DEFAULT_TIMEOUT * 4)
                     if(msg.messageType == MessageTypes.I_AM_BEHIND ):
                         starting_index_of_log_of_lagging_server = msg.data
+
+
+
                         for i in range(starting_index_of_log_of_lagging_server,current_index):
-                                send_ctrl_message_with_ACK(log[i], ControlMessageTypes.REPLICATE_LOG, quorum,
-                                                       servers, DEFAULT_TIMEOUT * 4)
+                            term_and_index_number = []
+                            term_and_index_number.append(i)
+                            term_and_index_number.append(log[i])
+                            send_ctrl_message_with_ACK(term_and_index_number, ControlMessageTypes.REPLICATE_LOG, quorum,servers, DEFAULT_TIMEOUT * 4)
 
                         send_ctrl_message_with_ACK(term_number, ControlMessageTypes.UPDATE_YOUR_TERM_NUMBER_FROM_CURRENT_LEADER, i,
                                                    servers, DEFAULT_TIMEOUT * 4)

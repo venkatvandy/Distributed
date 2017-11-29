@@ -8,7 +8,7 @@ import copy
 from optparse import OptionParser
 import random
 
-TIME_OUT = 20
+TIME_OUT = 50
 class Node():
     ID = 0
     IPAddr = "localhost"

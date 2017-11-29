@@ -66,16 +66,7 @@ while 1:
 
 print("veleril")'''
 
-'''a = []
-a.insert(2,100)
-
-#print(a)
-print(a[0])'''
-
-cluster_count = 5
-
-b = 3
-
-if(b>cluster_count/2):
-    print("blah")
-
+term_and_index_number = []
+#term_and_index_number.append(1)
+#term_and_index_number.append(2)
+print(len(term_and_index_number))
