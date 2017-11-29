@@ -8,7 +8,7 @@ import copy
 from optparse import OptionParser
 import random
 
-
+TIME_OUT = 50
 class Node():
     ID = 0
     IPAddr = "localhost"
@@ -21,7 +21,7 @@ class Node():
             return True
         return False
 
-seconds = 4
+seconds = TIME_OUT
 request_sent = 0
 
 def client_request_timeout(knownNode):
@@ -35,7 +35,7 @@ def client_request_timeout(knownNode):
                 seconds -= 1;
             else:
                 # PBFT Raft timed out, start leader election by client intervention
-                seconds = 4
+                seconds = TIME_OUT
                 request_sent = 0
 
                 while 1:
@@ -96,9 +96,7 @@ def main():
                 else:
                     print("Your command got executed in time.")
                     request_sent = 0
-                    seconds = 4
-
-
+                    seconds = TIME_OUT
 
 
 if __name__ == "__main__":

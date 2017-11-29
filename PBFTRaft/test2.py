@@ -56,7 +56,7 @@ if j=="1":
     print("blah")'''
 
 
-a= 1
+'''a= 1
 
 while 1:
     if a==None:
@@ -64,5 +64,9 @@ while 1:
     else:
         break
 
-print("veleril")
+print("veleril")'''
 
+term_and_index_number = []
+#term_and_index_number.append(1)
+#term_and_index_number.append(2)
+print(len(term_and_index_number))
