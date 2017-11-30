@@ -52,6 +52,7 @@ def handle_ctrl_connection(conn, addr):
     global drop_table
     global currentleaderNode
     global last_term_i_voted_for
+    global last_node_i_voted_for
     global term_number
     global current_index
     global state
@@ -99,6 +100,7 @@ def handle_ctrl_connection(conn, addr):
                 else:
                     print("Voting for term ",message.extra)
                     retMsg = CtrlMessage(MessageTypes.I_VOTE_FOR_YOU, thisNode, retCode)
+                    last_node_i_voted_for = message.data.IPAddr
                     last_term_i_voted_for = incoming_term_number
 
                 conn.send(serialize_message(retMsg))
