@@ -32,9 +32,6 @@ currentleaderNode = None
 oldleaderNode = None
 log = []
 current_index=0
-commit_index = 0
-commit_tracker = {}
-commit_lock = Lock()
 acc_Table = []
 drop_table = []
 state= ServerStates.FOLLOWER
@@ -46,23 +43,18 @@ seconds = 10
 #seconds = random.randint(10,20)
 quorum = []
 
+
 def handle_ctrl_connection(conn, addr):
     global thisNode
     global acc_Table
     global drop_table
     global currentleaderNode
     global last_term_i_voted_for
-    global last_node_i_voted_for
     global term_number
     global current_index
     global state
     global seconds
     global oldleaderNode
-    global quorum
-    global commit_index
-    global commit_tracker
-    global cluster_count
-    global commit_lock
 
     data = conn.recv(MAX_REC_SIZE)
     conn.settimeout(DEFAULT_TIMEOUT)
@@ -100,7 +92,6 @@ def handle_ctrl_connection(conn, addr):
                 else:
                     print("Voting for term ",message.extra)
                     retMsg = CtrlMessage(MessageTypes.I_VOTE_FOR_YOU, thisNode, retCode)
-                    last_node_i_voted_for = message.data.IPAddr
                     last_term_i_voted_for = incoming_term_number
 
                 conn.send(serialize_message(retMsg))
@@ -109,7 +100,6 @@ def handle_ctrl_connection(conn, addr):
             retCode = 0
             flag=0
             quorum_temp = message.extra
-            quorum_length = len(quorum_temp)
             print("Quorum temp is: ", quorum_temp)
             IP_addr_list = []
 
@@ -125,24 +115,7 @@ def handle_ctrl_connection(conn, addr):
                     retMsg = CtrlMessage(MessageTypes.REJECT_NEW_LEADER, thisNode, retCode)
                     conn.send(serialize_message(retMsg))
                     break
-                elif each_voter == thisNode.IPAddr:
-                    if last_node_i_voted_for != message.data.IPAddr:
-                        print("Vote Not Valid")
-                        flag=1
-                        retMsg = CtrlMessage(MessageTypes.REJECT_NEW_LEADER, thisNode, retCode)
-                        conn.send(serialize_message(retMsg))
-                        break
-                else:
-                    msg = send_ctrl_message_with_ACK(term_number, ControlMessageTypes.VERIFY_ELECTION,None,each_voter,DEFAULT_TIMEOUT * 4)
-                    if msg.messageType == ControlMessageTypes.CANT_VERIFY_VOTE:
-                        print(each_voter, "vote not valid")
-                        quorum_length -= 1
-                        if quorum_length <= cluster_count / 2:
-                            print("Vote Not Valid")
-                            flag=1
-                            retMsg = CtrlMessage(MessageTypes.REJECT_NEW_LEADER, thisNode, retCode)
-                            conn.send(serialize_message(retMsg))
-                            break
+
 
             if flag ==0:
                 # added as experiment
@@ -157,99 +130,17 @@ def handle_ctrl_connection(conn, addr):
 
         elif message.messageType == ControlMessageTypes.REPLICATE_LOG:
             retCode = 0
-
-            #check quorum first to authenticate the leader
-
-            flag = 0
-            quorum_temp = message.extra
-            # print("Quorum temp is: ", quorum_temp)
-            existing_IP_addr_list = []
-
-            for each_node in acc_Table:
-                existing_IP_addr_list.append(each_node.IPAddr)
-
-            # ->> Connected(if you comment or remove below line , uncomment the line with same tag ->> later and comment the next line which follows)
-            existing_IP_addr_list.append(thisNode.IPAddr)
-
-            # print("Acc_table IP addresses : ", existing_IP_addr_list)
-
-            for each_voter_in_quorum in quorum_temp:
-                # ->> Connected
-                # if each_voter not in IP_addr_list and each_voter!= thisNode.IPAddr :
-                if each_voter_in_quorum not in existing_IP_addr_list:
-                    print("Vote Not Valid")
-                    flag = 1
-                    retMsg = CtrlMessage(MessageTypes.REJECT_LOG_REPLICATION_LEADER_FAILED_TO_PROVE_QUORUM, thisNode, retCode)
-                    conn.send(serialize_message(retMsg))
-                    break
-
-            if flag == 0:
-                term_and_index_number = message.data
-                print("******Term_and_index_number: " ,len(term_and_index_number))
-                #log_index = int(term_and_index_number[0])
-                #log_value = int(term_and_index_number[1])
-                log_index = term_and_index_number[0]
-                log_value = term_and_index_number[1]
-                print("%%%%%My current index is: ",current_index)
-                print("%%%%%Received index from leader is : ", log_index)
-                #log_value = message.data
-                #print("*****Quorum satisfied*****")
-                if(current_index == log_index):
-                    #log[current_index] = message.data
-                    log.append(log_value)
-                    #print("Log replicated: ", log[current_index])
-
-                    print("Log replicated: ", log)
-                    current_index = current_index +1
-
-                    #Below commented code is for old Raft where we inform only the leader about the replicated log.
-                    #retMsg = CtrlMessage(MessageTypes.LOG_RECORDED, thisNode, retCode)
-
-                    # Now in PBFT raft we send AppendEntryResponse i.e Ack for Log replication to everybody in the system so that everybody
-                    # can take their own decision when to commit the entries.
-
-                    # We initialize the commit count for the replicated entry to 1 because the leader has already replicated it.
-                    commit_tracker[current_index-1] = 1
-                    #We sleep for 6 seconds so that all the replicas record the log first.
-                    time.sleep(6)
-                    for servers in acc_Table:
-                        send_ctrl_message_with_ACK(current_index-1, ControlMessageTypes.APPEND_ENTRY_RESPONSE_FOR_LOG_REPLICATION, thisNode,
-                                                   servers, DEFAULT_TIMEOUT * 4)
-
-                    retMsg = CtrlMessage(MessageTypes.LOG_RECORDED, thisNode, retCode)
-
-
-                elif (current_index < log_index):
-                    retMsg = CtrlMessage(MessageTypes.I_AM_BEHIND, current_index, retCode)
-
-                conn.send(serialize_message(retMsg))
-
-        elif message.messageType == ControlMessageTypes.APPEND_ENTRY_RESPONSE_FOR_LOG_REPLICATION:
-            # when number of Appendentry responses received for a particular entry becomes > (NumberOfNodes/2) , that means the entry has been recorded in
-            # majority of servers and can be safely committed.
-            replicated_entry_index = message.data
-
-            commit_lock.acquire()
-
-            if replicated_entry_index in commit_tracker.keys():
-                commit_tracker[replicated_entry_index] = commit_tracker[replicated_entry_index] + 1
-            else:
-                commit_tracker[replicated_entry_index] = 1
-
-            commit_lock.release()
-
-            flag = 1
-            while flag==1:
-                commit_lock.acquire()
-                if commit_tracker[replicated_entry_index] > cluster_count/2 and len(log)>=replicated_entry_index+1:
-                    commit_index = replicated_entry_index
-                    print("Entry committed at index : ", commit_index)
-                    print("Current log is : ",log)
-                    flag=0
-                commit_lock.release()
-
-
-
+            log_index = int(message.extra)
+            log_value = message.data
+            if(current_index == log_index):
+                #log[current_index] = message.data
+                log.append(log_value)
+                print("Log replicated: ", log[current_index])
+                current_index = current_index +1
+                retMsg = CtrlMessage(MessageTypes.LOG_RECORDED, thisNode, retCode)
+            elif (current_index < log_index):
+                retMsg = CtrlMessage(MessageTypes.I_AM_BEHIND, current_index, retCode)
+            conn.send(serialize_message(retMsg))
 
         elif message.messageType == ControlMessageTypes.UPDATE_YOUR_TERM_NUMBER_FROM_CURRENT_LEADER:
             retCode = 0
@@ -261,7 +152,7 @@ def handle_ctrl_connection(conn, addr):
         elif message.messageType == ControlMessageTypes.ACCEPT_REQUEST_FROM_CLIENTS:
             if (state == ServerStates.LEADER):
                 retCode = 0
-                #time.sleep(8)
+                time.sleep(8)
 
                 if currentleaderNode==None:
                     retMsg = CtrlMessage(MessageTypes.REPLY_TO_CLIENT, current_index, retCode)
@@ -271,40 +162,17 @@ def handle_ctrl_connection(conn, addr):
                 #log[current_index]= term_number
                 log.append(term_number)
                 print("Log recorded: ",log[current_index])
-                commit_tracker[current_index] = 1
-                current_index = current_index + 1
-
                 for servers in acc_Table:
-
-                    term_and_index_number = []
-                    term_and_index_number.append(current_index-1)
-                    term_and_index_number.append(term_number)
-
-                    msg = send_ctrl_message_with_ACK(term_and_index_number, ControlMessageTypes.REPLICATE_LOG,quorum,servers,DEFAULT_TIMEOUT * 4)
+                    msg = send_ctrl_message_with_ACK(term_number, ControlMessageTypes.REPLICATE_LOG,current_index,servers,DEFAULT_TIMEOUT * 4)
                     if(msg.messageType == MessageTypes.I_AM_BEHIND ):
                         starting_index_of_log_of_lagging_server = msg.data
-
-
-
-                        for i in range(starting_index_of_log_of_lagging_server,current_index):
-                            term_and_index_number = []
-                            term_and_index_number.append(i)
-                            term_and_index_number.append(log[i])
-                            send_ctrl_message_with_ACK(term_and_index_number, ControlMessageTypes.REPLICATE_LOG, quorum,servers, DEFAULT_TIMEOUT * 4)
-
+                        for i in range(starting_index_of_log_of_lagging_server,current_index+1):
+                            send_ctrl_message_with_ACK(log[i], ControlMessageTypes.REPLICATE_LOG, i,
+                                                       servers, DEFAULT_TIMEOUT * 4)
                         send_ctrl_message_with_ACK(term_number, ControlMessageTypes.UPDATE_YOUR_TERM_NUMBER_FROM_CURRENT_LEADER, i,
                                                    servers, DEFAULT_TIMEOUT * 4)
-
-
-                    if (msg.messageType == MessageTypes.REJECT_LOG_REPLICATION_LEADER_FAILED_TO_PROVE_QUORUM):
-                        print("I am caught impersonating a Leader")
-                        commit_tracker[current_index-1] = 0
-
-                        # add code to in for client about faulty leader
-
-
-                retMsg = CtrlMessage(MessageTypes.REPLY_TO_CLIENT, commit_index, retCode)
-
+                current_index = current_index + 1
+                retMsg = CtrlMessage(MessageTypes.REPLY_TO_CLIENT, current_index, retCode)
                 conn.send(serialize_message(retMsg))
 
             else:
@@ -383,15 +251,6 @@ def handle_ctrl_connection(conn, addr):
 
             retMsg = CtrlMessage(MessageTypes.NEW_LEADER_ELECTED, thisNode, retCode)
             conn.send(serialize_message(retMsg))
-
-        elif message.messageType == ControlMessageTypes.VERIFY_ELECTION:
-            retCode = 0
-            if message.data == last_node_i_voted_for:
-                retMsg = CtrlMessage(MessageTypes.VERIFY_VOTE, thisNode, retCode)
-                conn.send(serialize_message(retMsg))
-            else:
-                retMsg = CtrlMessage(MessageTypes.CANT_VERIFY_VOTE, thisNode, retCode)
-                conn.send(serialize_message(retMsg))
 
 
 
