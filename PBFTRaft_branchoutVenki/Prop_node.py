@@ -32,7 +32,7 @@ currentleaderNode = None
 oldleaderNode = None
 log = []
 current_index=0
-commit_index = 0
+commit_index = -1
 commit_tracker = {}
 commit_lock = Lock()
 acc_Table = []
@@ -104,6 +104,7 @@ def handle_ctrl_connection(conn, addr):
                 conn.send(serialize_message(retMsg))
 
         elif message.messageType == ControlMessageTypes.I_AM_LEADER:
+            cluster_count = len(acc_Table) + 1
             retCode = 0
             flag=0
             quorum_temp = message.extra
@@ -194,14 +195,20 @@ def handle_ctrl_connection(conn, addr):
                     # can take their own decision when to commit the entries.
 
                     # We initialize the commit count for the replicated entry to 1 because the leader has already replicated it.
-                    commit_tracker[current_index-1] = 1
-                    #We sleep for 6 seconds so that all the replicas record the log first.
-                    time.sleep(6)
-                    for servers in acc_Table:
-                        send_ctrl_message_with_ACK(current_index-1, ControlMessageTypes.APPEND_ENTRY_RESPONSE_FOR_LOG_REPLICATION, thisNode,
-                                                   servers, DEFAULT_TIMEOUT * 4)
 
-                    print("Finished sending APPEND_ENTRY_RESPONSE_FOR_LOG_REPLICATION to servers")
+                    #We sleep for 6 seconds so that all the replicas record the log first.
+
+                    if len(term_and_index_number)==2:  #when term_and_index_numer has 3 entries it means a replica is catching up
+                        commit_tracker[current_index - 1] = 1
+                        #time.sleep(6)
+                        for servers in acc_Table:
+                            send_ctrl_message_with_ACK(current_index-1, ControlMessageTypes.APPEND_ENTRY_RESPONSE_FOR_LOG_REPLICATION, thisNode,
+                                                       servers, DEFAULT_TIMEOUT * 4)
+
+                        print("Finished sending APPEND_ENTRY_RESPONSE_FOR_LOG_REPLICATION to servers")
+
+                    else:
+                        commit_index = current_index
 
                     retMsg = CtrlMessage(MessageTypes.LOG_RECORDED, thisNode, retCode)
 
@@ -210,7 +217,7 @@ def handle_ctrl_connection(conn, addr):
                     retMsg = CtrlMessage(MessageTypes.I_AM_BEHIND, current_index, retCode)
 
                 else:
-                    print("cuurent index: ",current_index)
+                    print("current index: ",current_index)
                     print("log index: ", log_index)
                     retMsg = CtrlMessage(MessageTypes.ERROR_CONDITION, current_index, retCode)
 
@@ -219,31 +226,44 @@ def handle_ctrl_connection(conn, addr):
         elif message.messageType == ControlMessageTypes.APPEND_ENTRY_RESPONSE_FOR_LOG_REPLICATION:
             # when number of Appendentry responses received for a particular entry becomes > (NumberOfNodes/2) , that means the entry has been recorded in
             # majority of servers and can be safely committed.
+
             replicated_entry_index = message.data
 
-            commit_lock.acquire()
+            if commit_index == replicated_entry_index:
+                print("Already committed")
 
-            if replicated_entry_index in commit_tracker.keys():
-                commit_tracker[replicated_entry_index] = commit_tracker[replicated_entry_index] + 1
             else:
-                commit_tracker[replicated_entry_index] = 1
 
-            commit_lock.release()
+                print("Got APPEND_ENTRY_RESPONSE_FOR_LOG_REPLICATION ")
 
-            flag = 1
-            while flag==1:
                 commit_lock.acquire()
-                if commit_tracker[replicated_entry_index] > cluster_count/2 and len(log)>=replicated_entry_index+1:
-                    commit_index = replicated_entry_index
-                    print("Entry committed at index : ", commit_index)
-                    print("Current log is : ",log)
-                    flag=0
+
+                if replicated_entry_index in commit_tracker.keys():
+                    commit_tracker[replicated_entry_index] = commit_tracker[replicated_entry_index] + 1
+                else:
+                    commit_tracker[replicated_entry_index] = 1
+
                 commit_lock.release()
 
+                print(commit_tracker)
 
-
-
-
+                #flag = 1
+                #while flag==1:
+                while True:
+                    #commit_lock.acquire()
+                    cluster_count = len(acc_Table) + 1
+                    if commit_tracker[replicated_entry_index] > cluster_count/2 and len(log)>=replicated_entry_index+1:
+                        print(commit_tracker)
+                        print("commit_tracker[replicated_entry_index]",commit_tracker[replicated_entry_index])
+                        print("cluster_count", cluster_count)
+                        print("cluster_count/2", cluster_count/2)
+                        commit_index = replicated_entry_index
+                        print("Entry committed at index : ", commit_index)
+                        print("Current log is : ",log)
+                        break
+                    time.sleep(5)
+                        #flag=0
+                    #commit_lock.release()
 
 
         elif message.messageType == ControlMessageTypes.UPDATE_YOUR_TERM_NUMBER_FROM_CURRENT_LEADER:
@@ -282,10 +302,22 @@ def handle_ctrl_connection(conn, addr):
 
 
 
-                        for i in range(starting_index_of_log_of_lagging_server,current_index):
+                        #for i in range(starting_index_of_log_of_lagging_server,current_index):
+                        for i in range(starting_index_of_log_of_lagging_server, commit_index):
                             term_and_index_number = []
                             term_and_index_number.append(i)
                             term_and_index_number.append(log[i])
+                            # When a replica is catching up it does not need to send APPEND ENTRY RESPONSES
+                            # for replicating that log to other servers. So we are adding -1 to denote that.
+                            term_and_index_number.append(-1)
+                            send_ctrl_message_with_ACK(term_and_index_number, ControlMessageTypes.REPLICATE_LOG, quorum,servers, DEFAULT_TIMEOUT * 10)
+
+                        for i in range(commit_index, current_index):
+                            term_and_index_number = []
+                            term_and_index_number.append(i)
+                            term_and_index_number.append(log[i])
+                            # Now that the replica is caught up,send the latest client request to be replicated the replica
+
                             send_ctrl_message_with_ACK(term_and_index_number, ControlMessageTypes.REPLICATE_LOG, quorum,servers, DEFAULT_TIMEOUT * 10)
 
                         send_ctrl_message_with_ACK(term_number, ControlMessageTypes.UPDATE_YOUR_TERM_NUMBER_FROM_CURRENT_LEADER, i,
@@ -347,6 +379,7 @@ def handle_ctrl_connection(conn, addr):
             conn.send(serialize_message(retMsg))
 
         elif message.messageType == ControlMessageTypes.CLIENT_INTERVENTION:
+            print("Client Intervention received")
             retCode = 0
             state = ServerStates.FOLLOWER
             seconds = 10

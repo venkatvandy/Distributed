@@ -66,7 +66,16 @@ while 1:
 
 print("veleril")'''
 
-term_and_index_number = []
+'''term_and_index_number = []
 #term_and_index_number.append(1)
 #term_and_index_number.append(2)
-print(len(term_and_index_number))
+print(len(term_and_index_number))'''
+
+
+a=2
+b= 5
+
+if a > b/2:
+    print("asjvfddsf")
+
+print(int(b/2))
