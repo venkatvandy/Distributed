@@ -87,8 +87,7 @@ def main():
         if j == "1":
             request_sent = 1
             print("Sending....")
-            message = send_ctrl_message_with_ACK("blah", ControlMessageTypes.ACCEPT_REQUEST_FROM_CLIENTS, 0 ,tmpNode ,DEFAULT_TIMEOUT * 4)
-            #print("Waiting for response....")
+            message = send_ctrl_message_with_ACK("blah", ControlMessageTypes.ACCEPT_REQUEST_FROM_CLIENTS, 0 ,tmpNode ,None)
             if message.messageType == MessageTypes.REPLY_TO_CLIENT:
                 if request_sent==0:
                     print("Response late. Discarding the response from server.")
