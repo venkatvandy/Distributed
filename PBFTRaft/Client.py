@@ -8,7 +8,7 @@ import copy
 from optparse import OptionParser
 import random
 
-TIME_OUT = 50
+TIME_OUT = 500
 class Node():
     ID = 0
     IPAddr = "localhost"
@@ -87,16 +87,20 @@ def main():
         if j == "1":
             request_sent = 1
             print("Sending....")
-            message = send_ctrl_message_with_ACK("blah", ControlMessageTypes.ACCEPT_REQUEST_FROM_CLIENTS, 0 ,tmpNode ,DEFAULT_TIMEOUT * 4)
+            message = send_ctrl_message_with_ACK("blah", ControlMessageTypes.ACCEPT_REQUEST_FROM_CLIENTS, 0 ,tmpNode ,DEFAULT_TIMEOUT*100)
             #print("Waiting for response....")
+            #print("Blah",message.messageType)
             if message.messageType == MessageTypes.REPLY_TO_CLIENT:
                 if request_sent==0:
                     print("Response late. Discarding the response from server.")
                     request_sent=1
                 else:
                     print("Your command got executed in time.")
+                    print("Commit Index is: ",message.data)
                     request_sent = 0
                     seconds = TIME_OUT
+            else:
+                print("Timed out")
 
 
 if __name__ == "__main__":

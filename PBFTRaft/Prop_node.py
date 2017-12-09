@@ -201,11 +201,18 @@ def handle_ctrl_connection(conn, addr):
                         send_ctrl_message_with_ACK(current_index-1, ControlMessageTypes.APPEND_ENTRY_RESPONSE_FOR_LOG_REPLICATION, thisNode,
                                                    servers, DEFAULT_TIMEOUT * 4)
 
+                    print("Finished sending APPEND_ENTRY_RESPONSE_FOR_LOG_REPLICATION to servers")
+
                     retMsg = CtrlMessage(MessageTypes.LOG_RECORDED, thisNode, retCode)
 
 
                 elif (current_index < log_index):
                     retMsg = CtrlMessage(MessageTypes.I_AM_BEHIND, current_index, retCode)
+
+                else:
+                    print("cuurent index: ",current_index)
+                    print("log index: ", log_index)
+                    retMsg = CtrlMessage(MessageTypes.ERROR_CONDITION, current_index, retCode)
 
                 conn.send(serialize_message(retMsg))
 
@@ -232,6 +239,9 @@ def handle_ctrl_connection(conn, addr):
                     print("Current log is : ",log)
                     flag=0
                 commit_lock.release()
+
+
+
 
 
 
@@ -265,7 +275,8 @@ def handle_ctrl_connection(conn, addr):
                     term_and_index_number.append(current_index-1)
                     term_and_index_number.append(term_number)
 
-                    msg = send_ctrl_message_with_ACK(term_and_index_number, ControlMessageTypes.REPLICATE_LOG,quorum,servers,DEFAULT_TIMEOUT * 4)
+                    msg = send_ctrl_message_with_ACK(term_and_index_number, ControlMessageTypes.REPLICATE_LOG,quorum,servers,DEFAULT_TIMEOUT * 10)
+                    print("Sent replicate request to ", servers)
                     if(msg.messageType == MessageTypes.I_AM_BEHIND ):
                         starting_index_of_log_of_lagging_server = msg.data
 
@@ -275,28 +286,37 @@ def handle_ctrl_connection(conn, addr):
                             term_and_index_number = []
                             term_and_index_number.append(i)
                             term_and_index_number.append(log[i])
-                            send_ctrl_message_with_ACK(term_and_index_number, ControlMessageTypes.REPLICATE_LOG, quorum,servers, DEFAULT_TIMEOUT * 4)
+                            send_ctrl_message_with_ACK(term_and_index_number, ControlMessageTypes.REPLICATE_LOG, quorum,servers, DEFAULT_TIMEOUT * 10)
 
                         send_ctrl_message_with_ACK(term_number, ControlMessageTypes.UPDATE_YOUR_TERM_NUMBER_FROM_CURRENT_LEADER, i,
-                                                   servers, DEFAULT_TIMEOUT * 4)
+                                                   servers, DEFAULT_TIMEOUT * 10)
 
 
-                    if (msg.messageType == MessageTypes.REJECT_LOG_REPLICATION_LEADER_FAILED_TO_PROVE_QUORUM):
+                    elif (msg.messageType == MessageTypes.REJECT_LOG_REPLICATION_LEADER_FAILED_TO_PROVE_QUORUM):
                         print("I am caught impersonating a Leader")
                         commit_tracker[current_index-1] = 0
 
                         # add code to in for client about faulty leader
 
+                    elif (msg.messageType == MessageTypes.LOG_RECORDED):
+                        print("Log that I sent was recorded by the replica")
 
+                    elif (msg.messageType == MessageTypes.ERROR_CONDITION):
+                        print("Error condition")
+
+
+
+                print("Leader sent replicate request to all replicas")
                 retMsg = CtrlMessage(MessageTypes.REPLY_TO_CLIENT, commit_index, retCode)
 
                 conn.send(serialize_message(retMsg))
+                print("Sent reply to Client")
 
             else:
                 if currentleaderNode != None:
                     retCode = 0
                     msg = send_ctrl_message_with_ACK(message.data, ControlMessageTypes.ACCEPT_REQUEST_FROM_CLIENTS,0 , currentleaderNode,
-                                                     DEFAULT_TIMEOUT * 4)
+                                                     DEFAULT_TIMEOUT *100)
 
                     if msg.messageType == MessageTypes.REPLY_TO_CLIENT:
                         retMsg = CtrlMessage(MessageTypes.REPLY_TO_CLIENT, current_index, retCode)
@@ -334,7 +354,7 @@ def handle_ctrl_connection(conn, addr):
             currentleaderNode = None
             for servers in acc_Table:
                 msg = send_ctrl_message_with_ACK(term_number, ControlMessageTypes.CLIENT_INTERVENTION_RECEIVED, current_index, servers,
-                                                 DEFAULT_TIMEOUT * 4)
+                                                 DEFAULT_TIMEOUT * 10)
 
             while(1):
                 #Wait till new election gives a new leader
@@ -349,7 +369,7 @@ def handle_ctrl_connection(conn, addr):
                         print("Same leader elected again. Start Election again")
                         for servers in acc_Table:
                             msg = send_ctrl_message_with_ACK(term_number,ControlMessageTypes.CLIENT_INTERVENTION_RECEIVED,current_index, servers,
-                                                             DEFAULT_TIMEOUT * 4)
+                                                             DEFAULT_TIMEOUT * 10)
 
                     else:
                         print("********&&&&&&^%$#$%^&*(*&^%$%^&*(*&^New Leader Elected^&*)(*&^%$$%^&*(*&^%$#$%^&*(*&^%$#$%^&*(")
@@ -375,7 +395,7 @@ def join_network(someNode):
     global thisNode
     global acc_Table
     message = send_ctrl_message_with_ACK(thisNode, ControlMessageTypes.JOIN_NETWORK, 0, someNode,
-                                         DEFAULT_TIMEOUT * 4)
+                                         DEFAULT_TIMEOUT * 10)
     if message is None:
         print("Timeout or Error")
         return 0
@@ -394,7 +414,7 @@ def stabilization_routine():
     while 1:
         for i in acc_Table:
             message = send_ctrl_message_with_ACK(acc_Table, ControlMessageTypes.SYNC_NETWORK, 1,i,
-                                       DEFAULT_TIMEOUT * 4)
+                                       DEFAULT_TIMEOUT * 10)
             if message.messageType == ControlMessageTypes.NODE_DROP:
                 print("Bu hu")
                 drop_table.append(message.data)
@@ -435,7 +455,7 @@ def start_leader_election():
 
     for server in acc_Table:
         message = send_ctrl_message_with_ACK(thisNode, ControlMessageTypes.STARTING_ELECTION_PHASE, term_number, server,
-                                         DEFAULT_TIMEOUT * 4)
+                                         DEFAULT_TIMEOUT * 10)
         if (message.messageType == MessageTypes.ELECTION_ALREADY_RUNNING):
             state = ServerStates.FOLLOWER
             print("Election already running")
@@ -446,7 +466,7 @@ def start_leader_election():
 
     '''for server in acc_Table:
         message = send_ctrl_message_with_ACK(thisNode, ControlMessageTypes.ASK_FOR_VOTE, term_number, server,
-                                         DEFAULT_TIMEOUT * 4)
+                                         DEFAULT_TIMEOUT * 10)
 
         if(message.messageType == MessageTypes.I_VOTE_FOR_YOU):
             count=count+1
@@ -459,8 +479,8 @@ def start_leader_election():
 
     if(state == ServerStates.LEADER):
         for i in acc_Table:
-            #message = send_ctrl_message_with_ACK(thisNode, ControlMessageTypes.I_AM_LEADER, term_number, i,DEFAULT_TIMEOUT * 4)
-            message = send_ctrl_message_with_ACK(thisNode, ControlMessageTypes.I_AM_LEADER, quorum, i,DEFAULT_TIMEOUT * 4)
+            #message = send_ctrl_message_with_ACK(thisNode, ControlMessageTypes.I_AM_LEADER, term_number, i,DEFAULT_TIMEOUT * 10)
+            message = send_ctrl_message_with_ACK(thisNode, ControlMessageTypes.I_AM_LEADER, quorum, i,DEFAULT_TIMEOUT * 10)
             if message.messageType == MessageTypes.REJECT_NEW_LEADER :
                 state = ServerStates.FOLLOWER
                 currentleaderNode = None
@@ -472,7 +492,7 @@ def start_leader_election():
     quorum = []
     for server in acc_Table:
         message = send_ctrl_message_with_ACK(thisNode, ControlMessageTypes.ASK_FOR_VOTE, term_number, server,
-                                             DEFAULT_TIMEOUT * 4)
+                                             DEFAULT_TIMEOUT * 10)
 
         if (message.messageType == MessageTypes.I_VOTE_FOR_YOU):
             count = count + 1
@@ -495,9 +515,9 @@ def start_leader_election():
     #if (state == ServerStates.LEADER):
     if (count > cluster_count / 2):
         for i in acc_Table:
-            # message = send_ctrl_message_with_ACK(thisNode, ControlMessageTypes.I_AM_LEADER, term_number, i,DEFAULT_TIMEOUT * 4)
+            # message = send_ctrl_message_with_ACK(thisNode, ControlMessageTypes.I_AM_LEADER, term_number, i,DEFAULT_TIMEOUT * 10)
             message = send_ctrl_message_with_ACK(thisNode, ControlMessageTypes.I_AM_LEADER, quorum, i,
-                                                 DEFAULT_TIMEOUT * 4)
+                                                 DEFAULT_TIMEOUT * 10)
             if message.messageType == MessageTypes.REJECT_NEW_LEADER:
                 state = ServerStates.FOLLOWER
                 currentleaderNode = None
@@ -523,7 +543,7 @@ def heartbeat_routine():
         if (state == ServerStates.LEADER):
             for server in acc_Table:
                 message = send_ctrl_message_with_ACK(thisNode, ControlMessageTypes.HEARTBEAT, term_number, server,
-                                                 DEFAULT_TIMEOUT * 4)
+                                                 DEFAULT_TIMEOUT * 10)
         #good value
         time.sleep(5)
 
@@ -550,7 +570,9 @@ def display_state_of_server():
             state = ServerStates.FOLLOWER
             currentleaderNode = None
 
-        time.sleep(5)
+        print("Number of nodes in the system:",len(acc_Table))
+
+        time.sleep(30)
 
 def leader_timeout_routine():
     global seconds
