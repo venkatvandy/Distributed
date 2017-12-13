@@ -41,6 +41,7 @@ state= ServerStates.FOLLOWER
 cluster_count=0
 term_number = 0
 last_term_i_voted_for = 0
+last_node_i_voted_for = None
 voting_lock = Lock()
 seconds = 10
 #seconds = random.randint(10,20)
@@ -98,6 +99,7 @@ def handle_ctrl_connection(conn, addr):
                         retMsg = CtrlMessage(MessageTypes.I_DO_NOT_VOTE_FOR_YOU, thisNode, retCode)
                 else:
                     print("Voting for term ",message.extra)
+                    last_node_i_voted_for = message.data.IPAddr
                     retMsg = CtrlMessage(MessageTypes.I_VOTE_FOR_YOU, thisNode, retCode)
                     last_term_i_voted_for = incoming_term_number
 
@@ -128,7 +130,15 @@ def handle_ctrl_connection(conn, addr):
                     retMsg = CtrlMessage(MessageTypes.REJECT_NEW_LEADER, thisNode, retCode)
                     conn.send(serialize_message(retMsg))
                     break
-
+                else:
+                    # Check if quorum is valid.
+                    reply = send_ctrl_message_with_ACK(str(message.data.IPAddr), MessageTypes.DID_YOU_VOTE_FOR_LEADER, 0, each_voter_in_quorum, DEFAULT_TIMEOUT * 4)
+                    if reply.messageType == ControlMessageTypes.NOT_WHO_I_VOTED_FOR:
+                        # TODO: Ensure that the leader doesn't still have enough votes.
+                        print("Vote Not Valid")
+                        flag=1
+                        retMsg = CtrlMessage(MessageTypes.REJECT_NEW_LEADER, thisNode, retCode)
+                        conn.send(serialize_message(retMsg))
 
             if flag ==0:
                 # added as experiment
@@ -422,6 +432,13 @@ def handle_ctrl_connection(conn, addr):
             retMsg = CtrlMessage(MessageTypes.NEW_LEADER_ELECTED, thisNode, retCode)
             conn.send(serialize_message(retMsg))
 
+        elif message.messageType == ControlMessageTypes.DID_YOU_VOTE_FOR_LEADER:
+            if last_node_i_voted_for is None or str(last_node_i_voted_for) != message.data:
+                retMsg = CtrlMessage(MessageTypes.NOT_WHO_I_VOTED_FOR, 0, 0)
+                conn.send(serialize_message(retMsg))
+            else:
+                retMsg = CtrlMessage(MessageTypes.WHO_I_VOTED_FOR, 0, 0)
+                conn.send(serialize_message(retMsg))
 
 
 def join_network(someNode):
