@@ -130,7 +130,7 @@ def handle_ctrl_connection(conn, addr):
                     retMsg = CtrlMessage(MessageTypes.REJECT_NEW_LEADER, thisNode, retCode)
                     conn.send(serialize_message(retMsg))
                     break
-                else:
+                elif each_voter_in_quorum != message.data.IPAddr:
                     # Check if quorum is valid.
                     cur_node = None
                     for n in acc_Table:
