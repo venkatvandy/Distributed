@@ -136,13 +136,22 @@ def handle_ctrl_connection(conn, addr):
                     for n in acc_Table:
                         if n.IPAddr == each_voter_in_quorum:
                             cur_node = n
-                    reply = send_ctrl_message_with_ACK(str(message.data.IPAddr), MessageTypes.DID_YOU_VOTE_FOR_LEADER, 0, cur_node, DEFAULT_TIMEOUT * 4)
-                    if reply.messageType == ControlMessageTypes.NOT_WHO_I_VOTED_FOR:
-                        # TODO: Ensure that the leader doesn't still have enough votes.
+                    if cur_node is not None:
+                        # IF it is none, it must be this node.
+                        reply = send_ctrl_message_with_ACK(str(message.data.IPAddr), MessageTypes.DID_YOU_VOTE_FOR_LEADER, 0, cur_node, DEFAULT_TIMEOUT * 4)
+                        if reply.messageType == ControlMessageTypes.NOT_WHO_I_VOTED_FOR:
+                            # TODO: Ensure that the leader doesn't still have enough votes.
+                            print("Vote Not Valid")
+                            flag=1
+                            retMsg = CtrlMessage(MessageTypes.REJECT_NEW_LEADER, thisNode, retCode)
+                            conn.send(serialize_message(retMsg))
+                            break
+                    elif str(last_node_i_voted_for) != str(message.data.IPAddr):
                         print("Vote Not Valid")
                         flag=1
                         retMsg = CtrlMessage(MessageTypes.REJECT_NEW_LEADER, thisNode, retCode)
                         conn.send(serialize_message(retMsg))
+                        break
 
             if flag ==0:
                 # added as experiment
