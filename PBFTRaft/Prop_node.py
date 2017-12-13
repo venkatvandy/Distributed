@@ -41,7 +41,6 @@ state= ServerStates.FOLLOWER
 cluster_count=0
 term_number = 0
 last_term_i_voted_for = 0
-last_node_i_voted_for = None
 voting_lock = Lock()
 seconds = 10
 #seconds = random.randint(10,20)
@@ -63,6 +62,7 @@ def handle_ctrl_connection(conn, addr):
     global commit_tracker
     global cluster_count
     global commit_lock
+    global last_node_i_voted_for
 
     data = conn.recv(MAX_REC_SIZE)
     conn.settimeout(DEFAULT_TIMEOUT)
