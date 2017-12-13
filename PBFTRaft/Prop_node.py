@@ -122,6 +122,7 @@ def handle_ctrl_connection(conn, addr):
             #print("Acc_table IP addresses : ", existing_IP_addr_list)
 
             for each_voter_in_quorum in quorum_temp:
+                print(each_voter_in_quorum)
                 # ->> Connected
                 #if each_voter not in IP_addr_list and each_voter!= thisNode.IPAddr :
                 if each_voter_in_quorum not in existing_IP_addr_list:
