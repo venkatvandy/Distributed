@@ -148,7 +148,7 @@ def handle_ctrl_connection(conn, addr):
                             retMsg = CtrlMessage(MessageTypes.REJECT_NEW_LEADER, thisNode, retCode)
                             conn.send(serialize_message(retMsg))
                             break
-                    elif str(last_node_i_voted_for) != str(message.data.IPAddr):
+                    elif last_node_i_voted_for is not None or str(last_node_i_voted_for) != str(message.data.IPAddr):
                         print("Vote Not Valid")
                         flag=1
                         retMsg = CtrlMessage(MessageTypes.REJECT_NEW_LEADER, thisNode, retCode)
