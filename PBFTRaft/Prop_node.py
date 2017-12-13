@@ -63,6 +63,11 @@ def handle_ctrl_connection(conn, addr):
     global cluster_count
     global commit_lock
     global last_node_i_voted_for
+    
+    try:
+        last_node_i_voted_for
+    except:
+        last_node_i_voted_for = None
 
     data = conn.recv(MAX_REC_SIZE)
     conn.settimeout(DEFAULT_TIMEOUT)

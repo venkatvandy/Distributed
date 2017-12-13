@@ -516,7 +516,7 @@ def start_leader_election():
     cluster_count = len(acc_Table)+1
     print("--------Total servers in cluster:",cluster_count,"-------")
     print("My state is: Candidate")
-    count=1
+    count=3
 
     for server in acc_Table:
         message = send_ctrl_message_with_ACK(thisNode, ControlMessageTypes.STARTING_ELECTION_PHASE, term_number, server,
