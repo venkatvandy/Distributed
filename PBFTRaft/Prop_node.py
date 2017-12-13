@@ -41,7 +41,6 @@ state= ServerStates.FOLLOWER
 cluster_count=0
 term_number = 0
 last_term_i_voted_for = 0
-last_node_i_voted_for = None
 voting_lock = Lock()
 seconds = 10
 #seconds = random.randint(10,20)
@@ -63,6 +62,7 @@ def handle_ctrl_connection(conn, addr):
     global commit_tracker
     global cluster_count
     global commit_lock
+    global last_node_i_voted_for
 
     data = conn.recv(MAX_REC_SIZE)
     conn.settimeout(DEFAULT_TIMEOUT)
@@ -100,6 +100,7 @@ def handle_ctrl_connection(conn, addr):
                 else:
                     print("Voting for term ",message.extra)
                     last_node_i_voted_for = message.data.IPAddr
+                    print("Last node I voted for", last_node_i_voted_for)
                     retMsg = CtrlMessage(MessageTypes.I_VOTE_FOR_YOU, thisNode, retCode)
                     last_term_i_voted_for = incoming_term_number
 
@@ -139,8 +140,8 @@ def handle_ctrl_connection(conn, addr):
                             cur_node = n
                     if cur_node is not None:
                         # IF it is none, it must be this node.
-                        reply = send_ctrl_message_with_ACK(str(message.data.IPAddr), MessageTypes.DID_YOU_VOTE_FOR_LEADER, 0, cur_node, DEFAULT_TIMEOUT * 4)
-                        if reply.messageType == ControlMessageTypes.NOT_WHO_I_VOTED_FOR:
+                        reply = send_ctrl_message_with_ACK(str(message.data.IPAddr), ControlMessageTypes.DID_YOU_VOTE_FOR_LEADER, 0, cur_node, DEFAULT_TIMEOUT * 4)
+                        if reply.messageType == MessageTypes.NOT_WHO_I_VOTED_FOR:
                             # TODO: Ensure that the leader doesn't still have enough votes.
                             print("Vote Not Valid")
                             flag=1
