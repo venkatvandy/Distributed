@@ -100,6 +100,7 @@ def handle_ctrl_connection(conn, addr):
                 else:
                     print("Voting for term ",message.extra)
                     last_node_i_voted_for = message.data.IPAddr
+                    print("Last node I voted for", last_node_i_voted_for)
                     retMsg = CtrlMessage(MessageTypes.I_VOTE_FOR_YOU, thisNode, retCode)
                     last_term_i_voted_for = incoming_term_number
 
@@ -139,8 +140,8 @@ def handle_ctrl_connection(conn, addr):
                             cur_node = n
                     if cur_node is not None:
                         # IF it is none, it must be this node.
-                        reply = send_ctrl_message_with_ACK(str(message.data.IPAddr), MessageTypes.DID_YOU_VOTE_FOR_LEADER, 0, cur_node, DEFAULT_TIMEOUT * 4)
-                        if reply.messageType == ControlMessageTypes.NOT_WHO_I_VOTED_FOR:
+                        reply = send_ctrl_message_with_ACK(str(message.data.IPAddr), ControlMessageTypes.DID_YOU_VOTE_FOR_LEADER, 0, cur_node, DEFAULT_TIMEOUT * 4)
+                        if reply.messageType == MessageTypes.NOT_WHO_I_VOTED_FOR:
                             # TODO: Ensure that the leader doesn't still have enough votes.
                             print("Vote Not Valid")
                             flag=1
