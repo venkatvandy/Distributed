@@ -106,7 +106,11 @@ def main():
                     print("Your command got executed in time.")
                     print("Commit Index is: ", message.data)
                 else:
-                    print("Timed out")
+                    print("Timed out. Asking for client Intervention....")
+                    message = send_ctrl_message_with_ACK("blah", ControlMessageTypes.CLIENT_INTERVENTION, 0, tmpNode,
+                                                     DEFAULT_TIMEOUT * 4)
+                    if message.messageType == MessageTypes.NEW_LEADER_ELECTED:
+                        print("New leader elected: " + message.data.IPAddr)
             else:
                 print("Timed out. Asking for client Intervention....")
                 message = send_ctrl_message_with_ACK("blah", ControlMessageTypes.CLIENT_INTERVENTION, 0, tmpNode,
