@@ -590,7 +590,7 @@ def start_leader_election():
                 print("I WAS CAUGHT LYING")
                 flag = 1
                 voting_lock.release()
-                sleep(20)
+                time.sleep(20)
                 return
 
         if flag ==0:
