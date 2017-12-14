@@ -85,7 +85,7 @@ def handle_ctrl_connection(conn, addr):
 
         elif message.messageType == ControlMessageTypes.STARTING_ELECTION_PHASE:
             retCode = 0
-            if(state == ServerStates.CANDIDATE):
+            if(state == ServerStates.CANDIDATE or seconds > 3):
                 retMsg = CtrlMessage(MessageTypes.ELECTION_ALREADY_RUNNING, thisNode, retCode)
             else:
                 state = ServerStates.FOLLOWER
@@ -170,6 +170,7 @@ def handle_ctrl_connection(conn, addr):
                 print("---------------------The leader for term ",term_number," is:",message.data.IPAddr,"------------------------")
                 retMsg = CtrlMessage(MessageTypes.ACCEPT_NEW_LEADER, thisNode, retCode)
                 conn.send(serialize_message(retMsg))
+                seconds = 10
 
         elif message.messageType == ControlMessageTypes.REPLICATE_LOG:
             retCode = 0
@@ -529,6 +530,7 @@ def start_leader_election():
         if (message.messageType == MessageTypes.ELECTION_ALREADY_RUNNING):
             state = ServerStates.FOLLOWER
             print("Election already running")
+            seconds = 3
             voting_lock.release()
             return
 
@@ -599,6 +601,7 @@ def start_leader_election():
             state = ServerStates.LEADER
             currentleaderNode = thisNode
             print("------I am the leader for term ", term_number, "------")
+            seconds = 10
 
     else:
         print("You cannot become leader")
@@ -657,7 +660,7 @@ def leader_timeout_routine():
             else:
                 # Leader timed out, start leader election by announcing yourself as candidate
                 print("Timed Out")
-                seconds = 10
+                seconds = 2
                 #seconds = random.randint(10, 20)
                 start_leader_election()
 

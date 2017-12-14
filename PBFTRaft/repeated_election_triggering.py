@@ -649,17 +649,8 @@ def leader_timeout_routine():
     while 1:
         #if (state == ServerStates.FOLLOWER and currentleaderNode!=None) or (state == ServerStates.CANDIDATE and currentleaderNode!=None):
         if state == ServerStates.FOLLOWER or state == ServerStates.CANDIDATE:
-            if (seconds > -1):
-                #print("\nSeconds: "+str(seconds))
-                time.sleep(1);
-                seconds -= 1;
-
-            else:
-                # Leader timed out, start leader election by announcing yourself as candidate
-                print("Timed Out")
-                seconds = 0
-                #seconds = random.randint(10, 20)
-                start_leader_election()
+            print("STARTING ELECTION")
+            start_leader_election()
 
 
 
