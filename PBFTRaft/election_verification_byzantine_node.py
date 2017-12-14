@@ -587,9 +587,11 @@ def start_leader_election():
             if message.messageType == MessageTypes.REJECT_NEW_LEADER:
                 state = ServerStates.FOLLOWER
                 currentleaderNode = None
-                print("------Other nodes caught my lie ", term_number, "------")
+                print("I WAS CAUGHT LYING")
                 flag = 1
-                break
+                voting_lock.release()
+                sleep(20)
+                return
 
         if flag ==0:
             state = ServerStates.LEADER
